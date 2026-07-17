@@ -113,6 +113,7 @@ model Proyecto_Herramientas {
   Estado             String? @default("Pendiente")
   SNs_Llevados       String?
   Cantidad           String?
+  Es_Consumible      Int?    @default(0)
 }
 
 model Proyectos {

@@ -7,6 +7,7 @@ import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { createProyecto, deleteProyecto } from "@/app/actions";
 import Link from "next/link";
 
 export function ProjectsClient({ initialProyectos }: { initialProyectos: any[] }) {

@@ -1,24 +1,37 @@
 "use client";
 
-import { Handshake, CheckSquare, Wrench, AlertTriangle, ArrowRight, ArrowUpRight } from "lucide-react";
+import { Handshake, CheckSquare, Wrench, AlertTriangle, ArrowRight, ArrowUpRight, Inbox, Truck, AlertCircle, Users, PlusCircle, DollarSign, Receipt } from "lucide-react";
 import Link from "next/link";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { Button } from "@/components/ui/button";
 
 export function DashboardClient({ 
   totalTools, 
   loanedTools, 
   activeProjects, 
   totalIncidents,
+  totalRequests,
+  activeVehicles,
+  totalInvested,
+  totalCostBroken,
   latestProjects,
   latestLoans,
+  latestIncidents,
+  topUsers,
   inventoryStats
 }: {
   totalTools: number;
   loanedTools: number;
   activeProjects: number;
   totalIncidents: number;
+  totalRequests: number;
+  activeVehicles: number;
+  totalInvested: number;
+  totalCostBroken: number;
   latestProjects: any[];
   latestLoans: any[];
+  latestIncidents: any[];
+  topUsers: any[];
   inventoryStats: any[];
 }) {
   
@@ -36,78 +49,145 @@ export function DashboardClient({
     return null;
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+  };
+
   return (
     <div className="flex-1 space-y-8 p-8 pt-6 overflow-y-auto w-full">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
           Dashboard
         </h2>
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/requests">
+            <Button variant="outline" className="gap-2 border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100 hover:text-orange-800">
+              <Inbox className="h-4 w-4" /> Buzón
+              {totalRequests > 0 && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">{totalRequests}</span>}
+            </Button>
+          </Link>
+          <Link href="/requests?new=true">
+            <Button variant="outline" className="gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10">
+              <PlusCircle className="h-4 w-4" /> Nueva Solicitud
+            </Button>
+          </Link>
+          <Link href="/loans">
+            <Button className="gap-2 shadow-md">
+              <Handshake className="h-4 w-4" /> Nuevo Préstamo
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {/* KPI Cards */}
-        <div className="rounded-2xl border bg-card/50 glass p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Wrench className="w-24 h-24" />
+            <Wrench className="w-16 h-16" />
           </div>
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Wrench className="h-4 w-4" /> Total Herramientas
+              <Wrench className="h-4 w-4" /> Herramientas
             </span>
-            <span className="text-4xl font-bold">{totalTools}</span>
-            <span className="text-xs text-muted-foreground mt-2">Registradas en inventario</span>
+            <span className="text-3xl font-bold">{totalTools}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-card/50 glass p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-blue-500">
-            <Handshake className="w-24 h-24" />
+            <Handshake className="w-16 h-16" />
           </div>
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-sm font-medium text-blue-500/80 flex items-center gap-2">
               <Handshake className="h-4 w-4" /> En Préstamo
             </span>
-            <span className="text-4xl font-bold text-blue-600 dark:text-blue-500">{loanedTools}</span>
-            <span className="text-xs text-muted-foreground mt-2">Asignaciones activas</span>
+            <span className="text-3xl font-bold text-blue-600 dark:text-blue-500">{loanedTools}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-card/50 glass p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-emerald-500">
+            <DollarSign className="w-16 h-16" />
+          </div>
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-sm font-medium text-emerald-600/80 flex items-center gap-2">
+              <DollarSign className="h-4 w-4" /> Valor Inventario
+            </span>
+            <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-500">{formatCurrency(totalInvested)}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-rose-500">
+            <Receipt className="w-16 h-16" />
+          </div>
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-sm font-medium text-rose-500/80 flex items-center gap-2">
+              <Receipt className="h-4 w-4" /> Costo Averías
+            </span>
+            <span className="text-3xl font-bold text-rose-600 dark:text-rose-500">{formatCurrency(totalCostBroken)}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-orange-500">
+            <Inbox className="w-16 h-16" />
+          </div>
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-sm font-medium text-orange-500/80 flex items-center gap-2">
+              <Inbox className="h-4 w-4" /> Solicitudes
+            </span>
+            <span className="text-3xl font-bold text-orange-600 dark:text-orange-500">{totalRequests}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-red-500">
+            <AlertTriangle className="w-16 h-16" />
+          </div>
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-sm font-medium text-red-500/80 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Incidentes
+            </span>
+            <span className="text-3xl font-bold text-red-600 dark:text-red-500">{totalIncidents}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-green-500">
-            <CheckSquare className="w-24 h-24" />
+            <CheckSquare className="w-16 h-16" />
           </div>
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-sm font-medium text-green-500/80 flex items-center gap-2">
               <CheckSquare className="h-4 w-4" /> Proyectos
             </span>
-            <span className="text-4xl font-bold text-green-600 dark:text-green-500">{activeProjects}</span>
-            <span className="text-xs text-muted-foreground mt-2">En curso o preparación</span>
+            <span className="text-3xl font-bold text-green-600 dark:text-green-500">{activeProjects}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-card/50 glass p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-orange-500">
-            <AlertTriangle className="w-24 h-24" />
+        <div className="rounded-2xl border bg-card/50 glass p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-purple-500">
+            <Truck className="w-16 h-16" />
           </div>
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-sm font-medium text-orange-500/80 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> Incidentes
+            <span className="text-sm font-medium text-purple-500/80 flex items-center gap-2">
+              <Truck className="h-4 w-4" /> Vehículos
             </span>
-            <span className="text-4xl font-bold text-orange-600 dark:text-orange-500">{totalIncidents}</span>
-            <span className="text-xs text-muted-foreground mt-2">Averías registradas</span>
+            <span className="text-3xl font-bold text-purple-600 dark:text-purple-500">{activeVehicles}</span>
           </div>
         </div>
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
+
         
         {/* Main Chart */}
         <div className="rounded-2xl border bg-card/50 glass shadow-sm col-span-1 lg:col-span-4 flex flex-col">
-          <div className="p-6 pb-2 border-b/50">
+          <div className="p-5 pb-2 border-b/50">
             <h3 className="font-semibold text-lg">Estado del Inventario</h3>
             <p className="text-sm text-muted-foreground">Distribución actual de herramientas</p>
           </div>
-          <div className="p-6 flex-1 min-h-[300px]">
+          <div className="p-5 flex-1 min-h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inventoryStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -125,7 +205,7 @@ export function DashboardClient({
 
         {/* Latest Projects */}
         <div className="rounded-2xl border bg-card/50 glass shadow-sm col-span-1 lg:col-span-3 flex flex-col">
-          <div className="p-6 pb-2 flex items-center justify-between border-b/50">
+          <div className="p-5 pb-2 flex items-center justify-between border-b/50">
             <div>
               <h3 className="font-semibold text-lg">Proyectos Recientes</h3>
               <p className="text-sm text-muted-foreground">Última actividad</p>
@@ -161,46 +241,96 @@ export function DashboardClient({
 
       </div>
 
-      {/* Latest Activity Timeline */}
-      <div className="rounded-2xl border bg-card/50 glass shadow-sm flex flex-col">
-        <div className="p-6 pb-4 border-b/50">
-          <h3 className="font-semibold text-lg">Actividad de Préstamos</h3>
-          <p className="text-sm text-muted-foreground">Herramientas asignadas recientemente</p>
-        </div>
-        <div className="p-6">
-          {latestLoans.length === 0 ? (
-            <div className="text-center text-sm text-muted-foreground py-4">No hay préstamos recientes.</div>
-          ) : (
-            <div className="space-y-6">
-              {latestLoans.map((loan: any, i: number) => (
-                <div key={loan.ID} className="flex gap-4 relative">
-                  {/* Line */}
-                  {i !== latestLoans.length - 1 && (
-                    <div className="absolute left-4 top-10 bottom-[-24px] w-px bg-border/80" />
-                  )}
-                  <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm text-blue-500">
-                    <Handshake className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col pt-1.5 w-full">
-                    <div className="flex items-start justify-between gap-4">
-                      <p className="text-sm font-medium leading-none">
-                        {loan.Usuario} ha retirado <span className="font-semibold text-primary">{loan.Herramienta}</span>
-                      </p>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {loan.Fecha_Entrega}
-                      </span>
-                    </div>
-                    {loan.Motivo && (
-                      <p className="text-xs text-muted-foreground mt-1.5 bg-muted/50 p-2 rounded-md border border-border/50 inline-block">
-                        {loan.Motivo}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+      {/* Tri-Column Lower Section */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+        
+        {/* Latest Loans */}
+        <div className="rounded-2xl border bg-card/50 glass shadow-sm flex flex-col">
+          <div className="p-5 pb-4 border-b/50 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2"><Handshake className="w-5 h-5 text-blue-500" /> Préstamos</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Asignaciones recientes</p>
             </div>
-          )}
+          </div>
+          <div className="p-5">
+            {latestLoans.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">No hay préstamos recientes.</div>
+            ) : (
+              <div className="space-y-4">
+                {latestLoans.map((loan: any) => (
+                  <div key={loan.ID} className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 shrink-0">
+                      {loan.Usuario?.charAt(0) || "U"}
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{loan.Herramienta}</p>
+                      <p className="text-xs text-muted-foreground truncate">{loan.Usuario}</p>
+                    </div>
+                    <div className="text-xs text-muted-foreground shrink-0">{loan.Fecha_Entrega}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Top Users */}
+        <div className="rounded-2xl border bg-card/50 glass shadow-sm flex flex-col">
+          <div className="p-5 pb-4 border-b/50 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2"><Users className="w-5 h-5 text-green-500" /> Top Usuarios</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Con más material en uso</p>
+            </div>
+          </div>
+          <div className="p-5">
+            {topUsers.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">Nadie tiene material asignado.</div>
+            ) : (
+              <div className="space-y-4">
+                {topUsers.map((u: any, idx: number) => (
+                  <div key={u.Usuario} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-muted-foreground w-4">{idx + 1}.</span>
+                      <p className="text-sm font-medium">{u.Usuario}</p>
+                    </div>
+                    <span className="text-xs font-bold bg-muted px-2 py-1 rounded-md">
+                      {u.count} uds.
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Latest Incidents */}
+        <div className="rounded-2xl border bg-card/50 glass shadow-sm flex flex-col">
+          <div className="p-5 pb-4 border-b/50 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-500" /> Incidentes</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Últimas averías reportadas</p>
+            </div>
+            <Link href="/incidents" className="text-xs text-primary hover:underline">Ver todos</Link>
+          </div>
+          <div className="p-5">
+            {latestIncidents.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">No hay incidentes recientes.</div>
+            ) : (
+              <div className="space-y-4">
+                {latestIncidents.map((inc: any) => (
+                  <div key={inc.ID} className="flex flex-col gap-1 border-l-2 border-red-500 pl-3 py-0.5">
+                    <p className="text-sm font-medium">{inc.Herramienta}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">{inc.Tipo} • {inc.Usuario || "N/A"}</span>
+                      <span className="text-xs text-muted-foreground">{inc.Fecha?.split('T')[0]}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

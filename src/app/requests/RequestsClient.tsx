@@ -8,6 +8,16 @@ import { deleteSolicitud, createAsignacion } from "@/app/actions";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { PlusCircle } from "lucide-react";
+import { createSolicitud } from "@/app/actions";
 
 export function RequestsClient({ initialRequests, tools = [], users = [] }: { initialRequests: any[], tools?: any[], users?: any[] }) {
   const [requests, setRequests] = useState(initialRequests);
@@ -18,7 +28,22 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
   const [assignOpen, setAssignOpen] = useState(false);
   const [currentReq, setCurrentReq] = useState<any>(null);
   const [assignData, setAssignData] = useState({ Herramienta_ID: "", Motivo: "Asignación desde Solicitud", Fecha_Limite: "" });
+  const [newReqOpen, setNewReqOpen] = useState(false);
+  const [newReqData, setNewReqData] = useState({ Herramienta: "", Usuario: "" });
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      setNewReqOpen(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("new");
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [searchParams, router, pathname]);
 
   const filteredRequests = [...requests].filter(req => 
     (req.Herramienta?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
@@ -74,32 +99,50 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
       return;
     }
     
+    const toolMatch = tools.find(t => t.ID === assignData.Herramienta_ID);
+    
     await createAsignacion({
       Herramienta_ID: assignData.Herramienta_ID,
+      Herramienta: toolMatch?.Nombre || "Desconocida",
       Usuario_ID: userMatch.ID,
+      Usuario: userMatch.Nombre,
       Motivo: assignData.Motivo,
       Fecha_Limite: assignData.Fecha_Limite || undefined
     });
     
     await deleteSolicitud(currentReq.ID);
-    setRequests(requests.filter(r => r.ID !== currentReq.ID));
+    setRequests((prev: any[]) => prev.filter(r => r.ID !== currentReq.ID));
     setAssignOpen(false);
     setCurrentReq(null);
+  };
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReqData.Herramienta || !newReqData.Usuario) return;
+    const newReq = await createSolicitud(newReqData);
+    setRequests((prev: any[]) => [newReq, ...prev]);
+    setNewReqOpen(false);
+    setNewReqData({ Herramienta: "", Usuario: "" });
   };
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6 overflow-y-auto">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Buzón de Solicitudes</h2>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mt-4 sm:mt-0">
-          <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 sm:w-[250px]" 
-            />
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mt-4 sm:mt-0 w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto flex gap-2">
+            <Button onClick={() => setNewReqOpen(true)} className="gap-2 shrink-0">
+              <PlusCircle className="h-4 w-4" /> Nueva Solicitud
+            </Button>
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 sm:w-[250px]" 
+              />
+            </div>
           </div>
           <div className="flex items-center gap-4 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
             <div className="flex items-center gap-2">
@@ -132,6 +175,52 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
           </div>
         </div>
       </div>
+
+      <Dialog open={newReqOpen} onOpenChange={setNewReqOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Añadir Nueva Solicitud</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateRequest} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="req_herramienta">Herramienta / Material</Label>
+              <Input 
+                id="req_herramienta" 
+                list="tools-list-req"
+                value={newReqData.Herramienta} 
+                onChange={(e) => setNewReqData({...newReqData, Herramienta: e.target.value})} 
+                placeholder="Escribe o elige de la lista..."
+                required
+              />
+              <datalist id="tools-list-req">
+                {tools.map(t => (
+                  <option key={t.ID} value={`${t.Nombre} ${t.ID_Interno ? `[SN: ${t.ID_Interno}]` : ''}`.trim()} />
+                ))}
+              </datalist>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="req_usuario">Usuario Solicitante</Label>
+              <Input 
+                id="req_usuario" 
+                list="users-list-req"
+                value={newReqData.Usuario} 
+                onChange={(e) => setNewReqData({...newReqData, Usuario: e.target.value})} 
+                placeholder="Escribe o elige de la lista..."
+                required
+              />
+              <datalist id="users-list-req">
+                {users.map(u => (
+                  <option key={u.ID} value={u.Nombre} />
+                ))}
+              </datalist>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" type="button" onClick={() => setNewReqOpen(false)}>Cancelar</Button>
+              <Button type="submit">Añadir Solicitud</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {groupedArray.length > 0 && (
         <div className="rounded-xl border bg-card p-4 shadow-sm mb-6">
@@ -242,7 +331,7 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
 
       {/* Dialog for grouped requests */}
       <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="sm:max-w-4xl w-[95vw]">
           <DialogHeader>
             <DialogTitle>Solicitudes Pendientes</DialogTitle>
           </DialogHeader>
@@ -250,41 +339,51 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
           {(() => {
             const toolDetails = tools.find(t => t.Nombre.toLowerCase() === (selectedGroup || "").toLowerCase());
             return (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-6">
                 {/* Tool Info Card */}
-                <div className="flex items-center gap-4 p-4 border rounded-xl bg-card">
-                  <div className="h-16 w-16 rounded-lg bg-white border flex items-center justify-center shrink-0 overflow-hidden p-1">
+                <div className="flex items-center gap-5 p-5 border rounded-2xl bg-card shadow-sm">
+                  <div className="h-20 w-20 rounded-xl bg-white border flex items-center justify-center shrink-0 overflow-hidden p-2 shadow-inner">
                     {toolDetails?.Imagen_URL ? (
                       <img src={toolDetails.Imagen_URL} alt={selectedGroup || ""} className="h-full w-full object-contain" />
                     ) : (
-                      <MailQuestion className="h-6 w-6 text-orange-500" />
+                      <MailQuestion className="h-8 w-8 text-orange-500" />
                     )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-xl">{selectedGroup}</h3>
+                    <h3 className="font-bold text-2xl">{selectedGroup}</h3>
                     {toolDetails && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Categoría: {toolDetails.Categoria || "N/A"} • Estado: {toolDetails.Estado}
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium ring-1 ring-inset ring-gray-500/10">
+                          {toolDetails.Categoria || "Sin categoría"}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${toolDetails.Estado === 'Disponible' ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'}`}>
+                          {toolDetails.Estado}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Requests List */}
-                <div className="mt-2">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Solicitantes</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto p-1">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Solicitantes</h4>
+                    <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
+                      {requests.filter(r => r.Herramienta === selectedGroup).length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[55vh] overflow-y-auto p-1">
                     {requests.filter(r => r.Herramienta === selectedGroup).map(sol => (
-                      <div key={sol.ID} className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 transition-colors hover:bg-muted/80">
+                      <div key={sol.ID} className="flex flex-col p-4 border rounded-xl bg-muted/20 transition-all hover:bg-muted/50 hover:shadow-md gap-3">
                         <div>
-                          <p className="font-medium text-base">{sol.Usuario}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{sol.Fecha.split('T')[0]}</p>
+                          <p className="font-semibold text-base line-clamp-1" title={sol.Usuario}>{sol.Usuario}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{sol.Fecha.split('T')[0]} {sol.Fecha.split('T')[1] ? `• ${sol.Fecha.split('T')[1].substring(0,5)}` : ''}</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200" onClick={() => { setSelectedGroup(null); handleDeliver(sol); }}>
+                        <div className="flex gap-2 mt-auto pt-2">
+                          <Button variant="outline" size="sm" className="flex-1 text-green-700 hover:text-green-800 hover:bg-green-100 border-green-200 bg-green-50/50" onClick={() => { setSelectedGroup(null); handleDeliver(sol); }}>
                             <Check className="h-4 w-4 mr-1.5" /> Entregar
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => { setSelectedGroup(null); handleDelete(sol.ID); }}>
+                          <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-red-50 bg-white" onClick={() => { setSelectedGroup(null); handleDelete(sol.ID); }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -318,9 +417,20 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
                 required
               >
                 <option value="">-- Seleccionar herramienta --</option>
-                {tools.map(t => (
-                  <option key={t.ID} value={t.ID}>{t.Nombre} {t.SN ? `(SN: ${t.SN})` : ''}</option>
-                ))}
+                {tools.map(t => {
+                  let displaySN = "";
+                  if (t.SN) {
+                    const sns = t.SN.split(',').map((s: string) => s.trim()).filter(Boolean);
+                    if (sns.length > 1) {
+                      displaySN = ` (SN: ${sns[0]} +${sns.length - 1} más)`;
+                    } else if (sns.length === 1) {
+                      displaySN = ` (SN: ${sns[0]})`;
+                    }
+                  }
+                  return (
+                    <option key={t.ID} value={t.ID}>{t.Nombre}{displaySN}</option>
+                  );
+                })}
               </select>
             </div>
             <div className="space-y-2">
@@ -329,6 +439,31 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
                 value={assignData.Motivo} 
                 onChange={(e) => setAssignData({...assignData, Motivo: e.target.value})} 
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha Límite (Opcional)</Label>
+              <Popover>
+                <PopoverTrigger render={
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !assignData.Fecha_Limite && "text-muted-foreground"
+                    )}
+                  />
+                }>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {assignData.Fecha_Limite ? format(new Date(assignData.Fecha_Limite + "T12:00:00Z"), "PPP", { locale: es }) : <span>Selecciona una fecha...</span>}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={assignData.Fecha_Limite ? new Date(assignData.Fecha_Limite + "T12:00:00Z") : undefined}
+                    onSelect={(d) => setAssignData({...assignData, Fecha_Limite: d ? format(d, 'yyyy-MM-dd') : ""})}
+                    locale={es}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" type="button" onClick={() => setAssignOpen(false)}>Cancelar</Button>

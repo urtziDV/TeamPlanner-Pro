@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List } from "lucide-react";
+import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List, Download, ImagePlus } from "lucide-react";
+import { exportToExcel } from "@/lib/exportUtils";
+import { QRGenerator } from "@/components/QRGenerator";
+import { QRScanner } from "@/components/QRScanner";
 import { createHerramienta, deleteHerramienta, updateHerramienta } from "@/app/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -15,15 +18,18 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   const [editOpen, setEditOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortMode, setSortMode] = useState<"name_asc" | "name_desc" | "cat_asc" | "status_asc">("name_asc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
-  const filteredTools = tools.filter(t => 
-    (t.Nombre?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
-    (t.Categoria?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
-    (t.SN?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-  );
+  const filteredTools = tools.filter(t => {
+    const matchesSearch = (t.Nombre?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
+                          (t.Categoria?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
+                          (t.SN?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || t.Estado === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const sortedAndFilteredTools = [...filteredTools].sort((a, b) => {
     if (sortMode === "name_asc") return (a.Nombre || "").localeCompare(b.Nombre || "");
@@ -109,9 +115,26 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6 overflow-y-auto">
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex items-center justify-between space-y-2 mb-4">
         <h2 className="text-3xl font-bold tracking-tight">Inventario</h2>
         
+        <div className="flex flex-wrap items-center gap-3">
+          <QRScanner onScan={(text) => setSearchQuery(text)} />
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Buscar por nombre, categoría o SN..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex h-9 w-[200px] lg:w-[250px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pl-8"
+            />
+          </div>
+          <Button variant="outline" onClick={() => exportToExcel(sortedAndFilteredTools, 'Inventario_Herramientas')} title="Exportar a Excel">
+            <Download className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Exportar</span>
+          </Button>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button />}>
             <Plus className="h-4 w-4 mr-2" />
@@ -263,49 +286,53 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
       </div>
       
       <div className="rounded-md border bg-card">
-        <div className="p-4 border-b flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Buscar por nombre, categoría o SN..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pl-8"
-            />
+        <div className="relative w-full overflow-auto p-4">
+          <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 w-[160px] rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="all">Todos los Estados</option>
+            <option value="Disponible">Disponible</option>
+            <option value="Prestada">Prestada</option>
+            <option value="Averiada">Averiada / Rota</option>
+            <option value="Roto - Baja">Baja Definitiva</option>
+            <option value="Pérdida">Pérdida</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-4 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Ordenar:</span>
+            <select 
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as any)}
+              className="h-9 w-[150px] rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="name_asc">Nombre (A-Z)</option>
+              <option value="name_desc">Nombre (Z-A)</option>
+              <option value="cat_asc">Categoría</option>
+              <option value="status_asc">Estado</option>
+            </select>
           </div>
-          <div className="flex items-center gap-4 overflow-x-auto pb-1 sm:pb-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Ordenar:</span>
-              <select 
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as any)}
-                className="h-9 w-[150px] rounded-md border border-input bg-background text-foreground px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="name_asc">Nombre (A-Z)</option>
-                <option value="name_desc">Nombre (Z-A)</option>
-                <option value="cat_asc">Categoría</option>
-                <option value="status_asc">Estado</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
-              <button 
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button 
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
+            <button 
+              onClick={() => setViewMode("grid")}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
           </div>
         </div>
-        
-        <div className="relative w-full overflow-auto p-4">
+      </div>
+
           {viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {sortedAndFilteredTools.length === 0 ? (
@@ -351,6 +378,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                       </div>
                     </div>
                     <div className="absolute top-4 right-4 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <QRGenerator toolId={h.ID} snString={h.SN} cantidadTotal={h.Cantidad_Total} title={h.Nombre} />
                       <button onClick={() => openEdit(h)} className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors">
                         <Edit className="h-4 w-4" />
                       </button>
@@ -423,6 +451,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                     </td>
                     <td className="p-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <QRGenerator toolId={h.ID} snString={h.SN} cantidadTotal={h.Cantidad_Total} title={h.Nombre} />
                         <button 
                           onClick={() => openEdit(h)}
                           className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"

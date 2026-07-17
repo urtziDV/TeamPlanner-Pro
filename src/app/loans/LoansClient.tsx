@@ -1,13 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Handshake, Plus, Undo2, History, AlertTriangle, Trash2, Search, LayoutGrid, List } from "lucide-react";
+import { Handshake, Plus, Undo2, History, AlertTriangle, Trash2, Search, LayoutGrid, List, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/exportUtils";
+import { QRScanner } from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { createAsignacion, deleteAsignacion, deleteHistorialPrestamo } from "@/app/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function LoansClient({ activeLoans, history, tools, allTools, users }: { activeLoans: any[], history: any[], tools: any[], allTools: any[], users: any[] }) {
   const [open, setOpen] = useState(false);
@@ -109,7 +118,8 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Préstamos y Asignaciones</h2>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <QRScanner onScan={(text) => setSearchQuery(text)} />
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -118,6 +128,11 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 w-[250px]" 
             />
+          </div>
+          <Button variant="outline" onClick={() => exportToExcel(filteredActiveLoans, 'Prestamos_Activos')} title="Exportar Activos a Excel">
+            <Download className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Exportar</span>
+          </Button>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button />}>
@@ -163,11 +178,28 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
               </div>
               <div className="space-y-2">
                 <Label>Fecha Límite (Opcional)</Label>
-                <Input 
-                  type="date"
-                  value={formData.Fecha_Limite} 
-                  onChange={(e) => setFormData({...formData, Fecha_Limite: e.target.value})} 
-                />
+                <Popover>
+                  <PopoverTrigger render={
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.Fecha_Limite && "text-muted-foreground"
+                      )}
+                    />
+                  }>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.Fecha_Limite ? format(new Date(formData.Fecha_Limite + "T12:00:00Z"), "PPP", { locale: es }) : <span>Selecciona una fecha...</span>}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.Fecha_Limite ? new Date(formData.Fecha_Limite + "T12:00:00Z") : undefined}
+                      onSelect={(d) => setFormData({...formData, Fecha_Limite: d ? format(d, 'yyyy-MM-dd') : ""})}
+                      locale={es}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -176,7 +208,6 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
             </form>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
       <Tabs defaultValue="activos" className="space-y-4">

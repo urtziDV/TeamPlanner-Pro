@@ -7,6 +7,7 @@ import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { createUbicacion, deleteUbicacion, updateVehicleAssignment } from "@/app/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: any[], history: any[], users: any[] }) {

@@ -2,11 +2,12 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Monitor, Database, Moon, Sun, HardDrive, Save } from "lucide-react";
+import { Monitor, Database, Moon, Sun, HardDrive, Save, FolderOpen, Download, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateConfigs } from "@/app/actions";
+import { updateConfigs, openFilePicker, openFolderPicker, exportBackupAction, importBackupAction } from "@/app/actions";
+import { toast } from "sonner";
 
 export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[] }) {
   const { theme, setTheme } = useTheme();
@@ -103,21 +104,37 @@ export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[]
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="dbPath">Ruta de la Base de Datos</Label>
-                <Input 
-                  id="dbPath" 
-                  placeholder="ej. C:\App\database.db"
-                  value={configData.dbPath}
-                  onChange={e => setConfigData({...configData, dbPath: e.target.value})}
-                />
+                <div className="flex gap-2">
+                  <Input 
+                    id="dbPath" 
+                    placeholder="ej. C:\App\database.db"
+                    value={configData.dbPath}
+                    onChange={e => setConfigData({...configData, dbPath: e.target.value})}
+                  />
+                  <Button variant="outline" onClick={async () => {
+                    const res = await openFilePicker();
+                    if (res) setConfigData({...configData, dbPath: res});
+                  }}>
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="backupPath">Ruta Copias de Seguridad (Local)</Label>
-                <Input 
-                  id="backupPath" 
-                  placeholder="ej. C:\Backups"
-                  value={configData.backupPath}
-                  onChange={e => setConfigData({...configData, backupPath: e.target.value})}
-                />
+                <div className="flex gap-2">
+                  <Input 
+                    id="backupPath" 
+                    placeholder="ej. C:\Backups"
+                    value={configData.backupPath}
+                    onChange={e => setConfigData({...configData, backupPath: e.target.value})}
+                  />
+                  <Button variant="outline" onClick={async () => {
+                    const res = await openFolderPicker();
+                    if (res) setConfigData({...configData, backupPath: res});
+                  }}>
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="backupCopies">Número de Copias a Guardar</Label>
@@ -138,21 +155,39 @@ export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[]
             </div>
             
             <div className="border-t pt-4 mt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Copia de Seguridad Manual</p>
-                  <p className="text-sm text-muted-foreground">
-                    Descargar un archivo .db con los datos actuales ahora.
-                  </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Exportar Copia Local</p>
+                    <p className="text-sm text-muted-foreground">
+                      Guardar una copia de seguridad en una carpeta.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={async () => {
+                    const res = await exportBackupAction();
+                    if (res.success) toast.success(res.message);
+                    else toast.error(res.message);
+                  }}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar...
+                  </Button>
                 </div>
-                <a
-                  href="/api/backup"
-                  download
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                >
-                  <HardDrive className="h-4 w-4 mr-2" />
-                  Descargar
-                </a>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Restaurar Copia (Importar)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Restaura la base de datos desde un archivo .db.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={async () => {
+                    const res = await importBackupAction();
+                    if (res.success) toast.success(res.message);
+                    else toast.error(res.message);
+                  }}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar...
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

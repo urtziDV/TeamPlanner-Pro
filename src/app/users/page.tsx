@@ -12,5 +12,29 @@ export default async function UsersPage() {
     orderBy: { Nombre: 'asc' }
   });
 
-  return <UsersClient initialUsers={users} departments={departments} />;
+  const allBasicTools = await prisma.herramientas.findMany({
+    where: { Es_Basica: 1 }
+  });
+
+  const allTools = await prisma.herramientas.findMany();
+
+  const activeAssignments = await prisma.asignaciones.findMany({
+    where: { Estado: 'Activo' }
+  });
+
+  const allSolicitudes = await prisma.solicitudes.findMany();
+  
+  const allHistorial = await prisma.historial_prestamos.findMany({
+    orderBy: { Fecha_Entrega: 'desc' }
+  });
+
+  return <UsersClient 
+    initialUsers={users} 
+    departments={departments} 
+    basicTools={allBasicTools} 
+    activeAssignments={activeAssignments} 
+    allSolicitudes={allSolicitudes}
+    allHistorial={allHistorial}
+    allTools={allTools}
+  />;
 }

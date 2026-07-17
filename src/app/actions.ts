@@ -2,12 +2,20 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { exec } from "child_process";
+import { promisify } from "util";
+import path from "path";
+import fs from "fs";
 
-export async function createCategoria(data: { Nombre: string }) {
+const execAsync = promisify(exec);
+
+export async function createCategoria(data: { Nombre: string, Color?: string, Icono?: string }) {
   const newCat = await prisma.categorias.create({
     data: {
       ID: crypto.randomUUID(),
       Nombre: data.Nombre,
+      Color: data.Color,
+      Icono: data.Icono
     }
   });
   revalidatePath("/categories");
@@ -21,12 +29,13 @@ export async function deleteCategoria(id: string) {
   revalidatePath("/categories");
 }
 
-export async function updateCategoria(id: string, data: { Nombre: string, Color: string }) {
+export async function updateCategoria(id: string, data: { Nombre: string, Color?: string, Icono?: string }) {
   const updated = await prisma.categorias.update({
     where: { ID: id },
     data: {
       Nombre: data.Nombre,
-      Color: data.Color
+      Color: data.Color,
+      Icono: data.Icono
     }
   });
   revalidatePath("/categories");
@@ -108,6 +117,16 @@ export async function deleteProyecto(id: string) {
   revalidatePath("/");
 }
 
+export async function updateProyectoEstado(id: string, nuevoEstado: string) {
+  const updated = await prisma.proyectos.update({
+    where: { ID: id },
+    data: { Estado: nuevoEstado }
+  });
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${id}`);
+  return updated;
+}
+
 export async function updateHerramientaEstado(id: string, nuevoEstado: string) {
   const updated = await prisma.herramientas.update({
     where: { ID: id },
@@ -118,19 +137,33 @@ export async function updateHerramientaEstado(id: string, nuevoEstado: string) {
   return updated;
 }
 
-export async function addHerramientaToProject(data: { Proyecto_ID: string, Nombre_Generico: string, Cantidad_Requerida: number }) {
+export async function addHerramientaToProject(data: { Proyecto_ID: string, Nombre_Generico: string, Cantidad_Requerida: number, Es_Consumible?: boolean }) {
   const newItem = await prisma.proyecto_Herramientas.create({
     data: {
       ID: crypto.randomUUID(),
       Proyecto_ID: data.Proyecto_ID,
       Nombre_Generico: data.Nombre_Generico,
       Cantidad_Requerida: data.Cantidad_Requerida,
+      Es_Consumible: data.Es_Consumible ? 1 : 0,
       Cantidad_Llevada: 0,
       Estado: "Pendiente"
     }
   });
   revalidatePath(`/projects/${data.Proyecto_ID}`);
   return newItem;
+}
+
+export async function editHerramientaProject(id: string, projectId: string, data: { Nombre_Generico: string, Cantidad_Requerida: number, Es_Consumible?: boolean }) {
+  const updated = await prisma.proyecto_Herramientas.update({
+    where: { ID: id },
+    data: {
+      Nombre_Generico: data.Nombre_Generico,
+      Cantidad_Requerida: data.Cantidad_Requerida,
+      Es_Consumible: data.Es_Consumible ? 1 : 0
+    }
+  });
+  revalidatePath(`/projects/${projectId}`);
+  return updated;
 }
 
 export async function updateHerramientaProjectStatus(id: string, projectId: string, nuevoEstado: string, sn?: string) {
@@ -150,7 +183,22 @@ export async function deleteSolicitud(id: string) {
     where: { ID: id }
   });
   revalidatePath("/requests");
+  revalidatePath("/");
   revalidatePath("/incidents");
+}
+
+export async function createSolicitud(data: { Herramienta: string, Usuario: string }) {
+  const newSol = await prisma.solicitudes.create({
+    data: {
+      ID: crypto.randomUUID(),
+      Herramienta: data.Herramienta,
+      Usuario: data.Usuario,
+      Fecha: new Date().toISOString()
+    }
+  });
+  revalidatePath("/requests");
+  revalidatePath("/");
+  return newSol;
 }
 
 export async function createUsuario(data: { Nombre: string, Departamento: string, Email?: string, Telefono?: string, ID_Empleado?: string }) {
@@ -368,18 +416,6 @@ export async function deleteIncidente(id: string) {
   revalidatePath("/incidents");
 }
 
-export async function createSolicitud(data: { Herramienta: string, Usuario: string }) {
-  const newReq = await prisma.solicitudes.create({
-    data: {
-      ID: crypto.randomUUID(),
-      Herramienta: data.Herramienta,
-      Usuario: data.Usuario,
-      Fecha: new Date().toISOString().split('T')[0]
-    }
-  });
-  revalidatePath("/incidents");
-  return newReq;
-}
 
 export async function updateConfigs(configs: {key: string, value: string}[]) {
   for (const c of configs) {
@@ -390,4 +426,92 @@ export async function updateConfigs(configs: {key: string, value: string}[]) {
     });
   }
   revalidatePath("/settings");
+}
+
+export async function openFolderPicker(): Promise<string | null> {
+  try {
+    const script = `
+      Add-Type -AssemblyName System.Windows.Forms;
+      $f = New-Object System.Windows.Forms.FolderBrowserDialog;
+      $f.Description = "Selecciona la carpeta";
+      $f.ShowNewFolderButton = $true;
+      $result = $f.ShowDialog();
+      if ($result -eq 'OK') { Write-Output $f.SelectedPath }
+    `;
+    const { stdout } = await execAsync(`powershell -Command "${script.replace(/\n/g, ' ')}"`);
+    return stdout.trim() || null;
+  } catch (e) {
+    console.error("Error opening folder picker:", e);
+    return null;
+  }
+}
+
+export async function openFilePicker(): Promise<string | null> {
+  try {
+    const script = `
+      Add-Type -AssemblyName System.Windows.Forms;
+      $f = New-Object System.Windows.Forms.OpenFileDialog;
+      $f.Filter = "SQLite Database (*.db)|*.db|All Files (*.*)|*.*";
+      $f.Title = "Selecciona el archivo de la base de datos";
+      $result = $f.ShowDialog();
+      if ($result -eq 'OK') { Write-Output $f.FileName }
+    `;
+    const { stdout } = await execAsync(`powershell -Command "${script.replace(/\n/g, ' ')}"`);
+    return stdout.trim() || null;
+  } catch (e) {
+    console.error("Error opening file picker:", e);
+    return null;
+  }
+}
+
+export async function exportBackupAction(): Promise<{success: boolean, message: string}> {
+  try {
+    const script = `
+      Add-Type -AssemblyName System.Windows.Forms;
+      $f = New-Object System.Windows.Forms.FolderBrowserDialog;
+      $f.Description = "Selecciona la carpeta para guardar la copia";
+      $f.ShowNewFolderButton = $true;
+      $result = $f.ShowDialog();
+      if ($result -eq 'OK') { Write-Output $f.SelectedPath }
+    `;
+    const { stdout } = await execAsync(`powershell -Command "${script.replace(/\n/g, ' ')}"`);
+    const targetFolder = stdout.trim();
+    if (!targetFolder) return { success: false, message: "Operación cancelada" };
+
+    const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+    if (!fs.existsSync(dbPath)) return { success: false, message: "No se encuentra dev.db" };
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    const filename = `ToolTracker_Backup_${dateStr}_${timeStr}.db`;
+    const targetPath = path.join(targetFolder, filename);
+
+    fs.copyFileSync(dbPath, targetPath);
+    return { success: true, message: `Backup exportado a: ${targetPath}` };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
+}
+
+export async function importBackupAction(): Promise<{success: boolean, message: string}> {
+  try {
+    const script = `
+      Add-Type -AssemblyName System.Windows.Forms;
+      $f = New-Object System.Windows.Forms.OpenFileDialog;
+      $f.Filter = "SQLite Database (*.db)|*.db|All Files (*.*)|*.*";
+      $f.Title = "Selecciona la copia de seguridad a restaurar";
+      $result = $f.ShowDialog();
+      if ($result -eq 'OK') { Write-Output $f.FileName }
+    `;
+    const { stdout } = await execAsync(`powershell -Command "${script.replace(/\n/g, ' ')}"`);
+    const sourceFile = stdout.trim();
+    if (!sourceFile) return { success: false, message: "Operación cancelada" };
+
+    const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+    fs.copyFileSync(sourceFile, dbPath);
+    return { success: true, message: "Copia de seguridad restaurada correctamente" };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
 }

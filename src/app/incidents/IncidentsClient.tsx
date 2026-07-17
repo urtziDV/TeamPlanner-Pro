@@ -7,6 +7,7 @@ import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { createIncidente, deleteIncidente } from "@/app/actions";
 
 export function IncidentsClient({ incidentes }: { incidentes: any[] }) {
   const [incOpen, setIncOpen] = useState(false);
