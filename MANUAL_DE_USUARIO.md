@@ -1,6 +1,6 @@
 # 📖 Manual de Usuario - ToolTracker v4.0
 
-¡Bienvenido a **ToolTracker v4.0**, el nuevo sistema centralizado para la gestión de activos de INSER ROBOTICA! 
+¡Bienvenido a **ToolTracker v4.0**, el nuevo sistema centralizado para la gestión de activos y equipamiento! 
 
 Este manual te guiará paso a paso para que domines todas las secciones y características de la aplicación. Gracias a su nuevo diseño, verás que la navegación es extremadamente intuitiva, rápida y agradable a la vista.
 

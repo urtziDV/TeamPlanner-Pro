@@ -20,7 +20,7 @@
 
 ## 🌟 Visión General
 
-**ToolTracker Pro** revoluciona la forma en que los equipos técnicos gestionan su equipamiento dentro de **INSER ROBOTICA**. Desarrollado nativamente para la web utilizando el último stack tecnológico, ofrece una experiencia de usuario (UX) premium inigualable, un rendimiento ultrarrápido sin recargas de página y un diseño impecable con soporte nativo para modo oscuro.
+**ToolTracker Pro** revoluciona la forma en que los equipos técnicos gestionan su equipamiento de trabajo. Desarrollado nativamente para la web utilizando el último stack tecnológico, ofrece una experiencia de usuario (UX) premium inigualable, un rendimiento ultrarrápido sin recargas de página y un diseño impecable con soporte nativo para modo oscuro.
 
 Se acabaron las hojas de cálculo perdidas y el caos en el almacén. Controla todo tu ecosistema en un solo lugar con métricas financieras y operativas en tiempo real.
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## 🤝 Soporte y Contribución
 
-Este sistema es de uso interno exclusivo. Todas las arquitecturas, features y flujos han sido diseñados específicamente para optimizar la logística del equipo de INSER ROBOTICA.
+Este sistema es de uso interno exclusivo. Todas las arquitecturas, features y flujos han sido diseñados específicamente para optimizar la logística y el seguimiento del equipamiento.
 
 ---
 <div align="center">
