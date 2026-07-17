@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Asignaciones {
+  ID String @id
+  Herramienta_ID   String?
+  Usuario_ID       String?
+  Fecha_Entrega    String?
+  Fecha_Devolucion String?
+  Estado           String?
+  Fecha_Limite     String?
+  Motivo           String?
+  Observaciones    String?
+  Identificador    String?
+  Herramienta      String?
+  Usuario          String?
+  Fecha            String?
+  SN               String?
+}
+
+model Categorias {
+  ID String @id
+  Nombre String?
+  Icono  String?
+  Color  String?
+  Icon   String?
+}
+
+model Config {
+  key String @id
+  value String?
+}
+
+model Departamentos {
+  ID String @id
+  Nombre String?
+  Icono  String?
+}
+
+model Herramientas {
+  ID String @id
+  Nombre                   String?
+  Categoria                String?
+  Valor                    String?
+  Estado                   String?
+  Imagen_URL               String?
+  Es_Generica              Int?
+  SN                       String?
+  Es_Basica                Int?
+  Amazon_URL               String?
+  Cantidad_Total           Int?
+  Ubicacion                String?
+  Stock_Minimo             Int?    @default(0)
+  Observaciones            String?
+  Generar_QR               Int?
+  Calibracion_Requerida    Int?    @default(0)
+  Calibracion_Ultima       String?
+  Calibracion_Frecuencia   Int?
+  Mantenimiento_Requerido  Int?    @default(0)
+  Mantenimiento_Ultimo     String?
+  Mantenimiento_Frecuencia Int?
+  Fecha_Compra             String?
+  Garantia_Meses           Int?
+  Seguro_Compania          String?
+  Seguro_Poliza            String?
+  Apto_Proyecto            Int?    @default(0)
+}
+
+model HistorialRecordatorios {
+  ID String @id
+  Fecha    String?
+  Empleado String?
+  Tipo     String?
+  Via      String?
+  Mensaje  String?
+}
+
+model HistorialVehiculos {
+  ID String @id
+  Vehiculo_ID      String?
+  Vehiculo_Nombre  String?
+  Usuario_Nombre   String?
+  Fecha_Entrega    String?
+  Fecha_Devolucion String?
+  Observaciones    String?
+}
+
+model Incidentes {
+  ID String @id
+  Herramienta   String?
+  Usuario       String?
+  Tipo          String?
+  Costo         Float?
+  Fecha         String?
+  Observaciones String?
+}
+
+model Proyecto_Herramientas {
+  ID String @id
+  Proyecto_ID        String?
+  Herramienta_ID     String?
+  Nombre_Generico    String?
+  Cantidad_Requerida Int?    @default(1)
+  Cantidad_Llevada   Int?    @default(0)
+  Usuario_Llevo      String?
+  Fecha_Llevo        String?
+  Estado             String? @default("Pendiente")
+  SNs_Llevados       String?
+  Cantidad           String?
+}
+
+model Proyectos {
+  ID String @id
+  Nombre       String?
+  Ubicacion    String?
+  Fecha_Inicio String?
+  Fecha_Fin    String?
+  Estado       String?
+  Fecha_Envio  String?
+}
+
+model Solicitudes {
+  ID String @id
+  Herramienta String?
+  Usuario     String?
+  Fecha       String?
+}
+
+model TiposRecordatorios {
+  ID String @id
+  Nombre    String?
+  Plantilla String?
+}
+
+model Ubicaciones {
+  ID String @id
+  Nombre                    String?
+  Tipo                      String? @default("Sitio")
+  Vehiculo_Marca            String?
+  Vehiculo_Modelo           String?
+  Vehiculo_Matricula        String?
+  Vehiculo_Asignado_A       String?
+  Vehiculo_Fecha_Asignacion String?
+}
+
+model Usuarios {
+  ID String @id
+  Nombre       String?
+  Departamento String?
+  Email        String?
+  Telefono     String?
+  ID_Empleado  String?
+}
+
+model historial_prestamos {
+  ID String @id
+  Herramienta_ID   String?
+  Usuario_ID       String?
+  Fecha_Entrega    String?
+  Fecha_Devolucion String?
+  Estado_Final     String?
+  Motivo           String?
+  Observaciones    String?
+  Herramienta      String?
+  Usuario          String?
+}
