@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List, Download, ImagePlus } from "lucide-react";
+import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List, Download, ImagePlus, Zap, ScanLine } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
 import { QRGenerator } from "@/components/QRGenerator";
 import { QRScanner } from "@/components/QRScanner";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export function InventoryClient({ initialTools, categorias }: { initialTools: any[], categorias: any[] }) {
+export function InventoryClient({ initialTools, categorias, usuarios = [] }: { initialTools: any[], categorias: any[], usuarios?: any[] }) {
   const [tools, setTools] = useState(initialTools);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -23,11 +23,26 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
+
+
   const filteredTools = tools.filter(t => {
     const matchesSearch = (t.Nombre?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
                           (t.Categoria?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
                           (t.SN?.toLowerCase() || "").includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || t.Estado === statusFilter;
+    
+    let matchesStatus = true;
+    if (statusFilter !== "all") {
+      if (statusFilter === "Prestada") {
+        matchesStatus = t.Estado === "Prestada" || (t._asignadas && t._asignadas > 0);
+      } else if (statusFilter === "Averiada") {
+        matchesStatus = t.Estado === "Averiada" || t.Estado === "Rota" || (t._averiadas && t._averiadas > 0);
+      } else if (statusFilter === "Pérdida" || statusFilter === "Roto - Baja") {
+        matchesStatus = t.Estado === statusFilter || (t._perdidas && t._perdidas > 0);
+      } else {
+        matchesStatus = t.Estado === statusFilter;
+      }
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -42,7 +57,9 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   const defaultForm = { 
     Nombre: "", Categoria: "", Estado: "Disponible", SN: [] as string[], Ubicacion: "",
     Valor: "", Observaciones: "", Es_Generica: false, Es_Basica: false, Apto_Proyecto: false, Imagen_URL: "",
-    Cantidad_Total: 1
+    Cantidad_Total: 1,
+    Calibracion_Requerida: false, Calibracion_Ultima: "", Calibracion_Frecuencia: 12,
+    Mantenimiento_Requerido: false, Mantenimiento_Ultimo: "", Mantenimiento_Frecuencia: 12
   };
   const [formData, setFormData] = useState(defaultForm);
   const [snInput, setSnInput] = useState("");
@@ -65,7 +82,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.Nombre) return;
-    const payload = { ...formData, SN: formData.SN.join(", ") };
+    const payload = { ...formData, SN: formData.SN.join(", "), Calibracion_Requerida: formData.Calibracion_Requerida ? 1 : 0, Mantenimiento_Requerido: formData.Mantenimiento_Requerido ? 1 : 0 };
     const newTool = await createHerramienta(payload);
     setTools((prev) => [newTool, ...prev]);
     setFormData(defaultForm);
@@ -101,6 +118,12 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
       Apto_Proyecto: tool.Apto_Proyecto === 1,
       Imagen_URL: tool.Imagen_URL || "",
       Cantidad_Total: tool.Cantidad_Total || 1,
+      Calibracion_Requerida: tool.Calibracion_Requerida === 1,
+      Calibracion_Ultima: tool.Calibracion_Ultima || "",
+      Calibracion_Frecuencia: tool.Calibracion_Frecuencia || 12,
+      Mantenimiento_Requerido: tool.Mantenimiento_Requerido === 1,
+      Mantenimiento_Ultimo: tool.Mantenimiento_Ultimo || "",
+      Mantenimiento_Frecuencia: tool.Mantenimiento_Frecuencia || 12
     });
     setEditOpen(true);
   };
@@ -108,8 +131,8 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTool) return;
-    const payload = { ...formData, SN: formData.SN.join(", ") };
-    const updated = await updateHerramienta(selectedTool.ID, payload);
+    const payload = { ...formData, SN: formData.SN.join(", "), Calibracion_Requerida: formData.Calibracion_Requerida ? 1 : 0, Mantenimiento_Requerido: formData.Mantenimiento_Requerido ? 1 : 0 };
+    const updatedTool = await updateHerramienta(selectedTool.ID, payload);
     setTools(tools.map(t => t.ID === selectedTool.ID ? { ...t, ...payload } : t));
     setEditOpen(false);
     setSnInput("");
@@ -121,6 +144,8 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
         <h2 className="text-3xl font-bold tracking-tight">Inventario</h2>
         
         <div className="flex flex-wrap items-center gap-3">
+
+
           <QRScanner onScan={(text) => setSearchQuery(text)} />
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -179,6 +204,14 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                       onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSn(); } }}
                       placeholder="Escribe y pulsa +"
                     />
+                    <QRScanner 
+                      triggerButton={<Button type="button" variant="outline" size="icon" title="Escanear con cámara"><ScanLine className="h-4 w-4" /></Button>}
+                      onScan={(text) => {
+                        if (text && !formData.SN.includes(text)) {
+                          setFormData({...formData, SN: [...formData.SN, text]});
+                        }
+                      }}
+                    />
                     <Button type="button" onClick={handleAddSn} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
                   </div>
                   {formData.SN.length > 0 && (
@@ -186,7 +219,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                       {formData.SN.map(sn => (
                         <div key={sn} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-xs">
                           {sn}
-                          <button type="button" onClick={() => handleRemoveSn(sn)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                          <Button title="Eliminar" variant="ghost" size="icon" type="button" onClick={() => handleRemoveSn(sn)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       ))}
                     </div>
@@ -356,7 +389,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                 </div>
               ) : (
                 sortedAndFilteredTools.map((h) => (
-                  <div key={h.ID} className="relative rounded-xl border bg-card text-card-foreground shadow overflow-hidden group hover:border-primary/50 transition-colors">
+                  <div key={h.ID} className="relative rounded-xl border bg-card text-card-foreground shadow overflow-hidden group glass-card">
                     <div className="p-4 flex items-start gap-4">
                       <div className="h-16 w-16 rounded-lg bg-white border flex items-center justify-center shrink-0 overflow-hidden p-1">
                         {h.Imagen_URL ? (
@@ -373,13 +406,30 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                             const sns = h.SN ? h.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
                             const hasMultiple = sns.length > 1 || (h.Cantidad_Total && h.Cantidad_Total > 1);
                             
+                            const badges = [];
+
                             if (hasMultiple && h._disponibles !== undefined && h._disponibles !== null) {
-                              return (
-                                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${h._disponibles > 0 ? 'border-green-500/20 bg-green-500/10 text-green-500' : 'border-orange-500/20 bg-orange-500/10 text-orange-500'}`}>
+                              badges.push(
+                                <span key="disp" className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${h._disponibles > 0 ? 'border-green-500/20 bg-green-500/10 text-green-500' : 'border-orange-500/20 bg-orange-500/10 text-orange-500'}`}>
                                   {h._disponibles} {h._disponibles === 1 ? 'Disponible' : 'Disponibles'}
                                 </span>
                               );
                             }
+                            if (h._averiadas && h._averiadas > 0) {
+                              badges.push(
+                                <span key="averiada" className="inline-flex items-center rounded-md border border-orange-500/30 bg-orange-500/10 text-orange-600 px-2 py-0.5 text-[10px] font-semibold">
+                                  {h._averiadas} {h._averiadas === 1 ? 'Averiada' : 'Averiadas'}
+                                </span>
+                              );
+                            }
+                            if (h._perdidas && h._perdidas > 0) {
+                              badges.push(
+                                <span key="perdida" className="inline-flex items-center rounded-md border border-red-500/30 bg-red-500/10 text-red-600 px-2 py-0.5 text-[10px] font-semibold">
+                                  {h._perdidas} {h._perdidas === 1 ? 'Pérdida' : 'Pérdidas'}
+                                </span>
+                              );
+                            }
+                            if (badges.length > 0) return <>{badges}</>;
                             
                             return h.Estado === "Disponible" ? (
                               <span className="inline-flex items-center rounded-md border border-green-500/20 bg-green-500/10 text-green-500 px-2 py-0.5 text-[10px] font-semibold">
@@ -407,12 +457,12 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                     </div>
                     <div className="absolute top-4 right-4 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <QRGenerator toolId={h.ID} snString={h.SN} cantidadTotal={h.Cantidad_Total} title={h.Nombre} />
-                      <button onClick={() => openEdit(h)} className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors">
+                      <Button title="Editar" variant="ghost" size="icon" onClick={() => openEdit(h)} className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors">
                         <Edit className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDelete(h.ID)} className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                      </Button>
+                      <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDelete(h.ID)} className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -494,18 +544,18 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                     <td className="p-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <QRGenerator toolId={h.ID} snString={h.SN} cantidadTotal={h.Cantidad_Total} title={h.Nombre} />
-                        <button 
+                        <Button title="Editar" variant="ghost" size="icon" 
                           onClick={() => openEdit(h)}
                           className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"
                         >
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button 
+                        </Button>
+                        <Button title="Eliminar" variant="ghost" size="icon" 
                           onClick={() => handleDelete(h.ID)}
                           className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -635,6 +685,14 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                           onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSn(); } }}
                           placeholder="Escribe y pulsa +"
                         />
+                        <QRScanner 
+                          triggerButton={<Button type="button" variant="outline" size="icon" title="Escanear con cámara"><ScanLine className="h-4 w-4" /></Button>}
+                          onScan={(text) => {
+                            if (text && !formData.SN.includes(text)) {
+                              setFormData({...formData, SN: [...formData.SN, text]});
+                            }
+                          }}
+                        />
                         <Button type="button" onClick={handleAddSn} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
                       </div>
                       {formData.SN.length > 0 && (
@@ -642,7 +700,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                           {formData.SN.map(sn => (
                             <div key={sn} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-xs">
                               {sn}
-                              <button type="button" onClick={() => handleRemoveSn(sn)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                              <Button title="Eliminar" variant="ghost" size="icon" type="button" onClick={() => handleRemoveSn(sn)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
                             </div>
                           ))}
                         </div>

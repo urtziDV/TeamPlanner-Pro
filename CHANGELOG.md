@@ -4,6 +4,23 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [4.1.0] - 2026-07-21
+
+### Añadido
+- **Mantenimiento Predictivo:** Se ha añadido la capacidad de registrar frecuencias y fechas de última calibración/mantenimiento en las herramientas, incluyendo una alerta visual al intentar asignar herramientas caducadas.
+- **Descripción Obligatoria en Vehículos:** El registro de asignaciones de flota ahora requiere justificar obligatoriamente el uso o destino.
+- **Métricas ROI Precisas:** El panel analítico ahora contabiliza averías (con coste de reparación €0 derivado al valor original) y robos de manera estricta para la gráfica de mayores pérdidas.
+- **Tooltips Premium Globales:** Añadidos cuadros de información (tooltips) descriptivos con estilo oscuro e interactivo a todos los botones de iconos en toda la aplicación, mejorando sustancialmente la intuición y curva de aprendizaje.
+
+### Cambiado
+- **Selectores en Incidentes:** El formulario de registro de incidentes se ha rediseñado para usar menús desplegables (selects) dinámicos en lugar de texto libre para seleccionar Empleados y Herramientas (abarcando todo el inventario, por si se reportan roturas a posteriori).
+- **Lectura Mejorada en Modo Oscuro:** Modificado el color de texto del título en el generador de QRs para forzar su legibilidad cuando se previsualiza la pegatina en Modo Oscuro.
+
+### Corregido
+- **Filtro de Estado en Inventario:** Arreglada la lógica del filtro "Prestada" y "Pérdida/Averiada". Ahora sí detectan correctamente unidades asignadas o perdidas procedentes de herramientas genéricas sin obligar a cambiar el estado global de toda la herramienta.
+- **Etiquetas de Unidades Desglosadas:** Las tarjetas del inventario ya no aplican un estado único falso, sino que desglosan claramente cuántas unidades están "Disponibles", "Averiadas" o son "Pérdida" mediante un sistema de etiquetas (badges).
+- **Generación Multi-QR:** Corregido el separador en la lectura de números de serie múltiples. Ahora es capaz de procesar listas separadas por saltos de línea y espacios (no solo por comas), generando los códigos de pegatina individualizados correctamente para cada unidad.
+
 ## [4.0.3] - 2026-07-21
 
 ### Añadido

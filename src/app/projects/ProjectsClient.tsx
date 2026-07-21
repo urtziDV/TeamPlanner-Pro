@@ -139,12 +139,12 @@ export function ProjectsClient({ initialProyectos }: { initialProyectos: any[] }
                   <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                   <span className="text-muted-foreground">Fase: <span className="font-medium text-foreground">{p.Estado || "Preparación"}</span></span>
                 </div>
-                <button
+                <Button title="Eliminar" variant="ghost" size="icon"
                   onClick={(e) => handleDelete(p.ID, e)}
                   className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           </Link>
@@ -165,12 +165,12 @@ export function ProjectsClient({ initialProyectos }: { initialProyectos: any[] }
                   <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                   <span className="text-sm text-muted-foreground">Fase: <span className="font-medium text-foreground">{p.Estado || "Preparación"}</span></span>
                 </div>
-                <button
+                <Button title="Eliminar" variant="ghost" size="icon"
                   onClick={(e) => handleDelete(p.ID, e)}
                   className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           </Link>

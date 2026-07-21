@@ -308,7 +308,7 @@ export function ProjectDetailClient({ project, initialChecklist, availableTools 
                               <Button variant="outline" size="sm" onClick={() => handleStatusChange(item.ID, "Completado")} className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50">
                                 <CheckCircle2 className="h-4 w-4 mr-1" /> OK
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => handleStatusChange(item.ID, "Roto")} className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                              <Button title="Registrar Incidente" variant="outline" size="sm" onClick={() => handleStatusChange(item.ID, "Roto")} className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
                                 <AlertTriangle className="h-4 w-4 mr-1" /> Roto
                               </Button>
                               <Button variant="outline" size="sm" onClick={() => handleStatusChange(item.ID, "Perdido")} className="h-8 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50">

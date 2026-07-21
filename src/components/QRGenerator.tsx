@@ -19,7 +19,7 @@ export function QRGenerator({
 }) {
   const [open, setOpen] = useState(false);
 
-  const sns = snString ? snString.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const sns = snString ? snString.split(/[\n,\s]+/).map(s => s.trim()).filter(Boolean) : [];
   const qrs: { label: string, data: string, id: string }[] = [];
 
   if (sns.length > 0) {
@@ -82,9 +82,9 @@ export function QRGenerator({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={
-        <button className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors" title="Generar QR">
+        <Button variant="ghost" size="icon" className="p-1.5 bg-background border shadow-sm rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors" title="Generar QR">
           <QrCode className="h-4 w-4" />
-        </button>
+        </Button>
       } />
       <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col p-6">
         <DialogHeader>
@@ -106,7 +106,7 @@ export function QRGenerator({
                        includeMargin={true}
                      />
                      <div className="ml-4 flex flex-col items-start flex-1 min-w-0">
-                       <p className="text-sm font-bold break-words w-full" title={title}>{title || "Herramienta"}</p>
+                       <p className="text-sm font-bold text-slate-900 break-words w-full" title={title}>{title || "Herramienta"}</p>
                        <p className="text-xs text-slate-600 mt-1 break-words w-full">{qr.label}</p>
                      </div>
                   </div>

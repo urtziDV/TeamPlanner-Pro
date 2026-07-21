@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { createUsuario, deleteUsuario, updateUsuario, createAsignacion, deleteSolicitud } from "@/app/actions";
+import { createUsuario, deleteUsuario, updateUsuario, createAsignacion, deleteSolicitud, assignKitToUser } from "@/app/actions";
 import { useRouter } from "next/navigation";
 
 export function UsersClient({ 
@@ -19,14 +19,16 @@ export function UsersClient({
   activeAssignments = [],
   allSolicitudes = [],
   allHistorial = [],
+  kits = [],
   allTools = []
 }: { 
   initialUsers: any[], 
   departments: any[], 
   basicTools?: any[], 
-  activeAssignments?: any[],
-  allSolicitudes?: any[],
-  allHistorial?: any[],
+  activeAssignments: any[],
+  allSolicitudes: any[],
+  allHistorial: any[],
+  kits?: any[],
   allTools?: any[]
 }) {
   const router = useRouter();
@@ -37,6 +39,28 @@ export function UsersClient({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
+
+  const calculateReliabilityScore = (userName: string) => {
+    const userHistory = allHistorial.filter(h => h.Usuario === userName);
+    if (userHistory.length === 0) return null;
+    
+    const totalResolved = userHistory.length;
+    const goodReturns = userHistory.filter(h => h.Estado_Final === 'Devuelto OK').length;
+    
+    return Math.round((goodReturns / totalResolved) * 100);
+  };
+
+  const getScoreColor = (score: number | null) => {
+    if (score === null) return "bg-gray-100 text-gray-500 border-gray-200";
+    if (score >= 90) return "bg-green-100 text-green-700 border-green-200";
+    if (score >= 70) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    return "bg-red-100 text-red-700 border-red-200";
+  };
+
+  const getScoreBadge = (score: number | null) => {
+    if (score === null) return <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500 border border-gray-200">Sin historial</span>;
+    return <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getScoreColor(score)}`}>Fiabilidad {score}%</span>;
+  };
   const [formData, setFormData] = useState({ Nombre: "", Departamento: "", Email: "", Telefono: "", ID_Empleado: "" });
 
   const filteredUsers = users.filter(u => 
@@ -127,6 +151,21 @@ export function UsersClient({
     }
   };
 
+  const handleAssignKit = async (kit: any) => {
+    if (!selectedUser) return;
+    const res = await assignKitToUser(selectedUser.ID, selectedUser.Nombre, kit.herramientas);
+    if (res.success) {
+      let msg = `Asignado: ${res.assigned.join(', ') || 'Ninguna herramienta'}.`;
+      if (res.missing.length > 0) {
+        msg += `\nSin stock: ${res.missing.join(', ')}.`;
+        alert(msg);
+      } else {
+        alert("Kit asignado completamente.");
+      }
+      router.refresh();
+    }
+  };
+
   const handleAssignSpecificTool = async (toolId: string) => {
     const toolToAssign = allTools.find((t: any) => t.ID === toolId);
     if (!toolToAssign) return;
@@ -175,7 +214,7 @@ export function UsersClient({
   };
 
   const userSolicitudes = selectedUser ? allSolicitudes.filter(s => s.Usuario === selectedUser.Nombre) : [];
-  const userHistorial = selectedUser ? allHistorial.filter(h => h.Usuario_ID === selectedUser.ID || h.Usuario === selectedUser.Nombre) : [];
+  const userHistorial = allHistorial.filter(h => h.Usuario_ID === selectedUser?.ID || h.Usuario === selectedUser?.Nombre);
 
   const handleDeleteRequest = async (id: string) => {
     const ok = await confirm({
@@ -352,7 +391,10 @@ export function UsersClient({
                     <UsersRound className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold leading-none tracking-tight">{u.Nombre}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold leading-none tracking-tight">{u.Nombre}</h3>
+                      {getScoreBadge(calculateReliabilityScore(u.Nombre))}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">{u.Departamento || "Sin departamento"}</p>
                     <div className="text-xs space-y-0.5 mt-2">
                       {u.Email && <p><span className="text-muted-foreground">Email:</span> {u.Email}</p>}
@@ -368,18 +410,18 @@ export function UsersClient({
                   >
                     <Briefcase className="h-4 w-4" />
                   </button>
-                  <button 
+                  <Button title="Editar" variant="ghost" size="icon" 
                     onClick={() => openEdit(u)}
                     className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"
                   >
                     <Edit className="h-4 w-4" />
-                  </button>
-                  <button 
+                  </Button>
+                  <Button title="Eliminar" variant="ghost" size="icon" 
                     onClick={() => handleDelete(u.ID)}
                     className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -389,7 +431,10 @@ export function UsersClient({
                     <span className="text-sm font-bold text-primary">{u.Nombre.substring(0, 2).toUpperCase()}</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold">{u.Nombre}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{u.Nombre}</h3>
+                      {getScoreBadge(calculateReliabilityScore(u.Nombre))}
+                    </div>
                     <p className="text-sm text-muted-foreground">{u.Departamento || "Sin departamento"}</p>
                   </div>
                 </div>
@@ -402,18 +447,18 @@ export function UsersClient({
                   >
                     <Briefcase className="h-4 w-4" />
                   </button>
-                  <button 
+                  <Button title="Editar" variant="ghost" size="icon" 
                     onClick={() => openEdit(u)}
                     className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"
                   >
                     <Edit className="h-4 w-4" />
-                  </button>
-                  <button 
+                  </Button>
+                  <Button title="Eliminar" variant="ghost" size="icon" 
                     onClick={() => handleDelete(u.ID)}
                     className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )
@@ -424,13 +469,32 @@ export function UsersClient({
       {/* Employee Details Modal */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles de {selectedUser?.Nombre}</DialogTitle>
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle className="flex items-center gap-3">
+              Detalles de {selectedUser?.Nombre}
+              {selectedUser && getScoreBadge(calculateReliabilityScore(selectedUser.Nombre))}
+            </DialogTitle>
+            {kits.length > 0 && (
+              <div className="flex items-center gap-2 mr-6">
+                <select 
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  onChange={(e) => {
+                    const k = kits.find(kit => kit.id === e.target.value);
+                    if (k) handleAssignKit(k);
+                    e.target.value = "";
+                  }}
+                >
+                  <option value="">Asignar Kit Rápido...</option>
+                  {kits.map(k => <option key={k.id} value={k.id}>{k.nombre}</option>)}
+                </select>
+              </div>
+            )}
           </DialogHeader>
           
           <Tabs defaultValue="bienvenida" className="w-full mt-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="bienvenida">Material de Bienvenida</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="bienvenida">Mat. Básico</TabsTrigger>
+              <TabsTrigger value="adicional">Mat. Adicional</TabsTrigger>
               <TabsTrigger value="solicitudes">Solicitudes</TabsTrigger>
               <TabsTrigger value="historial">Historial</TabsTrigger>
             </TabsList>
@@ -451,7 +515,7 @@ export function UsersClient({
                       </thead>
                       <tbody>
                         {welcomeKitNames.map(name => {
-                          const isDelivered = activeAssignments.some(a => a.Usuario_ID === selectedUser?.ID && a.Herramienta === name);
+                          const isDelivered = activeAssignments.some(a => (a.Usuario_ID === selectedUser?.ID || a.Usuario === selectedUser?.Nombre) && a.Herramienta === name);
                           return (
                             <tr key={name as string} className="border-b last:border-0">
                               <td className="px-4 py-3">{name as string}</td>
@@ -483,6 +547,39 @@ export function UsersClient({
               </div>
             </TabsContent>
 
+            <TabsContent value="adicional" className="pt-4">
+              <div className="space-y-4">
+                {(() => {
+                  const additional = activeAssignments.filter(a => (a.Usuario_ID === selectedUser?.ID || a.Usuario === selectedUser?.Nombre) && !welcomeKitNames.includes(a.Herramienta as string));
+                  if (additional.length === 0) {
+                    return <p className="text-sm text-muted-foreground text-center py-8">No hay material adicional prestado a este empleado.</p>;
+                  }
+                  return (
+                    <div className="rounded-md border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="px-4 py-2 text-left font-medium">Material</th>
+                            <th className="px-4 py-2 text-left font-medium">Fecha Entrega</th>
+                            <th className="px-4 py-2 text-left font-medium">Identificador</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {additional.map(a => (
+                            <tr key={a.ID} className="border-b last:border-0">
+                              <td className="px-4 py-3 font-medium">{a.Herramienta}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{a.Fecha_Entrega ? new Date(a.Fecha_Entrega).toLocaleDateString() : '-'}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{a.Identificador || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            </TabsContent>
+
             <TabsContent value="solicitudes" className="pt-4">
               <div className="space-y-4">
                 {userSolicitudes.length === 0 ? (
@@ -508,7 +605,7 @@ export function UsersClient({
                               <Button variant="outline" size="sm" onClick={() => handleAssignRequest(s)}>
                                 Asignar
                               </Button>
-                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRequest(s.ID)}>
+                              <Button title="Eliminar" variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRequest(s.ID)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </td>

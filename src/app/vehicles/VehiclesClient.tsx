@@ -27,6 +27,7 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
   const [selectedUser, setSelectedUser] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [descripcion, setDescripcion] = useState("");
 
   const [editHistoryOpen, setEditHistoryOpen] = useState(false);
   const [editingHistory, setEditingHistory] = useState<any>(null);
@@ -131,13 +132,15 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
     await updateVehicleAssignment(selectedVehicle.ID, { 
       usuario: selectedUser, 
       fechaInicio: fechaInicio || undefined,
-      fechaFin: fechaFin || undefined
+      fechaFin: fechaFin || undefined,
+      observaciones: descripcion || undefined
     });
     setAssignOpen(false);
     setSelectedVehicle(null);
     setSelectedUser("");
     setFechaInicio("");
     setFechaFin("");
+    setDescripcion("");
   };
 
   const handleReturn = async (id: string) => {
@@ -329,6 +332,15 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
                     <p className="text-xs text-muted-foreground">Opcional</p>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Descripción / Observaciones</Label>
+                  <Input 
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Motivo del viaje, destino..."
+                    required
+                  />
+                </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" type="button" onClick={() => setAssignOpen(false)}>Cancelar</Button>
                   <Button type="submit">Confirmar Asignación</Button>
@@ -354,7 +366,7 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
               </div>
             ) : vehiculos.map((v) => (
               viewMode === "grid" ? (
-                <div key={v.ID} className="rounded-xl border bg-card text-card-foreground shadow transition-all hover:shadow-md flex flex-col justify-between group overflow-hidden relative">
+                <div key={v.ID} className="rounded-xl border bg-card text-card-foreground shadow flex flex-col justify-between group overflow-hidden relative glass-card">
                   {v.Imagen_URL && (
                     <div className="w-full h-48 bg-white border-b p-2">
                       <img src={v.Imagen_URL} alt={v.Nombre} className="w-full h-full object-contain" />
@@ -362,12 +374,12 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
                   )}
                   
                   <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 ${v.Imagen_URL ? 'bg-background/90 backdrop-blur-sm p-1.5 rounded-lg border shadow-sm' : ''}`}>
-                    <button onClick={() => openEdit(v)} className="p-1.5 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
+                    <Button title="Editar" variant="ghost" size="icon" onClick={() => openEdit(v)} className="p-1.5 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
                       <Edit className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => handleDelete(v.ID)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
+                    </Button>
+                    <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDelete(v.ID)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="p-6 pb-4">
@@ -399,12 +411,12 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
                     </div>
                     <div className="mt-4 flex gap-2">
                       {v.Vehiculo_Asignado_A && (
-                        <Button variant="outline" size="sm" className="w-full text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(v.ID)}>
+                        <Button variant="outline" size="sm" className="flex-1 w-full whitespace-nowrap text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(v.ID)}>
                           Devolver
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => { setSelectedVehicle(v); setAssignOpen(true); }}>
-                        <Key className="h-4 w-4 mr-2 hidden sm:inline-block" /> {v.Vehiculo_Asignado_A ? 'Reservar' : 'Asignar'}
+                      <Button variant="outline" size="sm" className="flex-1 w-full whitespace-nowrap" onClick={() => { setSelectedVehicle(v); setAssignOpen(true); }}>
+                        <Key className="h-4 w-4 mr-1 hidden sm:inline-block shrink-0" /> {v.Vehiculo_Asignado_A ? 'Reservar' : 'Asignar'}
                       </Button>
                     </div>
                   </div>
@@ -448,12 +460,12 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
                         <Key className="h-4 w-4 mr-2" /> {v.Vehiculo_Asignado_A ? 'Reservar' : 'Asignar'}
                       </Button>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(v)} className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
+                      <Button title="Editar" variant="ghost" size="icon" onClick={() => openEdit(v)} className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
                         <Edit className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDelete(v.ID)} className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
+                      </Button>
+                      <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDelete(v.ID)} className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -489,12 +501,12 @@ export function VehiclesClient({ ubicaciones, history, users }: { ubicaciones: a
                     </td>
                     <td className="p-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingHistory(h); setEditHistoryOpen(true); }} className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
+                        <Button title="Editar" variant="ghost" size="icon" onClick={() => { setEditingHistory(h); setEditHistoryOpen(true); }} className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50">
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDeleteHistory(h.ID)} className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
+                        </Button>
+                        <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDeleteHistory(h.ID)} className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10">
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>

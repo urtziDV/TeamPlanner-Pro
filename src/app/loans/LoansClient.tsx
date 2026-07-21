@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Handshake, Plus, Undo2, History, AlertTriangle, Trash2, Search, LayoutGrid, List, Download } from "lucide-react";
+import { Handshake, Plus, Undo2, History, AlertTriangle, Trash2, Search, LayoutGrid, List, Download, Zap } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
 import { QRScanner } from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { createAsignacion, deleteAsignacion, deleteHistorialPrestamo } from "@/app/actions";
+import { createAsignacion, deleteAsignacion, deleteHistorialPrestamo, bulkAssignTools, bulkReturnTools } from "@/app/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,50 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
   const [sortMode, setSortMode] = useState<"name_asc" | "name_desc" | "user_asc" | "date_desc">("date_desc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
+
+  const [openBulk, setOpenBulk] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'assign' | 'return'>('assign');
+  const [bulkUser, setBulkUser] = useState("");
+  const [bulkInput, setBulkInput] = useState("");
+  const [bulkScanned, setBulkScanned] = useState<any[]>([]);
+  const [isExecutingBulk, setIsExecutingBulk] = useState(false);
+
+  const handleBulkScanSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkInput.trim()) return;
+    
+    const q = bulkInput.trim();
+    const toolMatch = allTools.find(t => t.ID === q || (t.SN && t.SN.includes(q)));
+    if (toolMatch) {
+      if (bulkScanned.some(b => b.ID === toolMatch.ID)) {
+        alert("La herramienta ya está en la cola");
+      } else {
+        const valid = bulkMode === 'assign' ? toolMatch.Estado === 'Disponible' : toolMatch.Estado === 'Prestada';
+        let statusMsg = valid ? "Listo" : (bulkMode === 'assign' ? "No disponible" : "No prestada");
+        setBulkScanned([{ ...toolMatch, codigo: q, valid, statusMsg }, ...bulkScanned]);
+      }
+    } else {
+      alert("Herramienta no encontrada");
+    }
+    setBulkInput("");
+  };
+
+  const executeBulkAction = async () => {
+    const validTools = bulkScanned.filter(b => b.valid).map(b => b.ID);
+    if (validTools.length === 0) return;
+    setIsExecutingBulk(true);
+    if (bulkMode === 'assign') {
+      const userObj = users?.find(u => u.ID === bulkUser);
+      if (userObj) await bulkAssignTools(userObj.ID, userObj.Nombre, validTools);
+    } else {
+      await bulkReturnTools(validTools);
+    }
+    setIsExecutingBulk(false);
+    setOpenBulk(false);
+    setBulkScanned([]);
+    alert(`Operación masiva completada con éxito.`);
+    window.location.reload();
+  };
 
   const sortLoans = (a: any, b: any) => {
     if (sortMode === "name_asc") return (a.Herramienta || "").localeCompare(b.Herramienta || "");
@@ -70,6 +114,33 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
     const herramienta = tools.find(t => t.ID === formData.Herramienta_ID);
     const usuario = users.find(u => u.ID === formData.Usuario_ID);
     
+    if (herramienta) {
+      let alertMsg = "";
+      const today = new Date();
+
+      if (herramienta.Calibracion_Requerida && herramienta.Calibracion_Frecuencia && herramienta.Calibracion_Ultima) {
+        const ult = new Date(herramienta.Calibracion_Ultima);
+        const prox = new Date(ult.getTime() + (herramienta.Calibracion_Frecuencia * 30 * 24 * 60 * 60 * 1000));
+        if (prox < today) alertMsg += "- La calibración está caducada.\n";
+      }
+
+      if (herramienta.Mantenimiento_Requerido && herramienta.Mantenimiento_Frecuencia && herramienta.Mantenimiento_Ultimo) {
+        const ult = new Date(herramienta.Mantenimiento_Ultimo);
+        const prox = new Date(ult.getTime() + (herramienta.Mantenimiento_Frecuencia * 30 * 24 * 60 * 60 * 1000));
+        if (prox < today) alertMsg += "- El mantenimiento está caducado.\n";
+      }
+
+      if (alertMsg !== "") {
+        const ok = await confirm({
+          title: "¡Atención! Mantenimiento Pendiente",
+          message: `Esta herramienta tiene avisos pendientes:\n${alertMsg}\n¿Estás seguro de que deseas asignarla bajo tu responsabilidad?`,
+          variant: "destructive",
+          confirmLabel: "Sí, asignar de todos modos"
+        });
+        if (!ok) return;
+      }
+    }
+
     await createAsignacion({
       ...formData,
       Herramienta: herramienta?.Nombre || "Desconocida",
@@ -131,6 +202,105 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
         <h2 className="text-3xl font-bold tracking-tight">Préstamos y Asignaciones</h2>
         
         <div className="flex flex-wrap items-center gap-3">
+          <Dialog open={openBulk} onOpenChange={setOpenBulk}>
+            <DialogTrigger asChild><Button variant="secondary" className="border-orange-500/30 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20" onClick={() => setOpenBulk(true)}><Zap className="h-4 w-4 mr-2 text-orange-500" /> Escáner Masivo</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-orange-500" /> Escáner Masivo (Acciones en Lote)</DialogTitle>
+              </DialogHeader>
+              <div className="mt-4">
+                <div className="flex rounded-lg bg-muted p-1 mb-4">
+                  <button 
+                    onClick={() => { setBulkMode('assign'); setBulkScanned([]); }}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${bulkMode === 'assign' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+                  >Asignar</button>
+                  <button 
+                    onClick={() => { setBulkMode('return'); setBulkScanned([]); }}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${bulkMode === 'return' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+                  >Devolver</button>
+                </div>
+
+                {bulkMode === 'assign' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>1. Seleccionar Empleado destino</Label>
+                      <select 
+                        value={bulkUser}
+                        onChange={e => setBulkUser(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                      >
+                        <option value="">-- Selecciona o escanea QR empleado --</option>
+                        {users.map(u => <option key={u.ID} value={u.ID}>{u.Nombre}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>2. Escanear Herramientas (SN o ID)</Label>
+                      <form onSubmit={handleBulkScanSubmit} className="flex gap-2">
+                        <Input 
+                          placeholder="Usa el lector de códigos aquí..."
+                          value={bulkInput}
+                          onChange={e => setBulkInput(e.target.value)}
+                          autoFocus
+                        />
+                        <Button type="submit" variant="secondary">Añadir</Button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+                
+                {bulkMode === 'return' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Escanear Herramientas a devolver al almacén</Label>
+                      <form onSubmit={handleBulkScanSubmit} className="flex gap-2">
+                        <Input 
+                          placeholder="Usa el lector de códigos aquí..."
+                          value={bulkInput}
+                          onChange={e => setBulkInput(e.target.value)}
+                          autoFocus
+                        />
+                        <Button type="submit" variant="secondary">Añadir</Button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 space-y-2">
+                  <Label>Herramientas en cola ({bulkScanned.length})</Label>
+                  <div className="min-h-[150px] max-h-[250px] overflow-y-auto border rounded-md p-2 bg-muted/30">
+                    {bulkScanned.length === 0 ? <p className="text-sm text-muted-foreground text-center p-4">No hay herramientas en cola</p> : (
+                      <ul className="space-y-2">
+                        {bulkScanned.map((bt, idx) => (
+                          <li key={idx} className="flex justify-between items-center bg-background border p-2 rounded-md shadow-sm">
+                            <div>
+                              <span className="font-medium text-sm">{bt.Nombre}</span>
+                              <span className="text-xs text-muted-foreground ml-2">SN/ID: {bt.codigo}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${bt.valid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {bt.statusMsg}
+                              </span>
+                              <Button title="Eliminar" variant="ghost" size="icon" onClick={() => setBulkScanned(bulkScanned.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setOpenBulk(false)}>Cancelar</Button>
+                  <Button onClick={executeBulkAction} disabled={isExecutingBulk || bulkScanned.filter(b => b.valid).length === 0 || (bulkMode === 'assign' && !bulkUser)}>
+                    {isExecutingBulk ? 'Procesando...' : `Confirmar ${bulkMode === 'assign' ? 'Asignación' : 'Devolución'}`}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <QRScanner onScan={(text) => setSearchQuery(text)} />
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -147,7 +317,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
           </Button>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
+          <DialogTrigger render={<Button title="Asignar / Prestar" />}>
             <Handshake className="h-4 w-4 mr-2" />
             Nueva Asignación
           </DialogTrigger>
@@ -297,10 +467,10 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                       </div>
                     </div>
                     <div className="px-6 py-3 border-t bg-muted/20 flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(loan.ID, loan.Herramienta_ID, "Devuelto OK")}>
+                      <Button title="Registrar devolución correcta de la herramienta" variant="outline" size="sm" className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(loan.ID, loan.Herramienta_ID, "Devuelto OK")}>
                         <Undo2 className="h-4 w-4 mr-2" /> Devolver OK
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openIncidentReturn(loan)}>
+                      <Button title="Registrar que la herramienta ha sido devuelta rota o con problemas" variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openIncidentReturn(loan)}>
                         <AlertTriangle className="h-4 w-4 mr-2" /> Incidente
                       </Button>
                     </div>
@@ -344,10 +514,10 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                         <td className="p-4 align-middle text-muted-foreground">{loan.Fecha_Entrega}</td>
                         <td className="p-4 align-middle text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(loan.ID, loan.Herramienta_ID, "Devuelto OK")}>
+                            <Button title="Registrar devolución correcta de la herramienta" variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleReturn(loan.ID, loan.Herramienta_ID, "Devuelto OK")}>
                               <Undo2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openIncidentReturn(loan)}>
+                            <Button title="Registrar que la herramienta ha sido devuelta rota o con problemas" variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openIncidentReturn(loan)}>
                               <AlertTriangle className="h-4 w-4" />
                             </Button>
                           </div>
@@ -388,12 +558,12 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                       </span>
                     </td>
                     <td className="p-4 align-middle text-right">
-                      <button 
+                      <Button title="Eliminar" variant="ghost" size="icon" 
                         onClick={() => handleDeleteHistory(h.ID)}
                         className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

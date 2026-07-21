@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip"
 
 import { cn } from "@/lib/utils"
 
@@ -46,13 +47,29 @@ function Button({
   size = "default",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return (
+  const btn = (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
+      title={undefined}
     />
-  )
+  );
+
+  if (props.title) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {btn}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{props.title}</p>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return btn;
 }
 
 export { Button, buttonVariants }

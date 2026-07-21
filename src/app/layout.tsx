@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,10 +26,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Sidebar />
-          <main className="flex-1 flex flex-col overflow-hidden">
-            {children}
-          </main>
+          <TooltipProvider delayDuration={200}>
+            <Sidebar />
+            <main className="flex-1 flex flex-col overflow-hidden">
+              {children}
+            </main>
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

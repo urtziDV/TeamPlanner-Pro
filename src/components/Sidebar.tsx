@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { VersionChecker } from "./VersionChecker";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Analítica ROI", href: "/dashboard", icon: LayoutDashboard },
   { name: "Inventario", href: "/inventory", icon: Archive },
   { name: "Préstamos", href: "/loans", icon: Handshake },
   { name: "Solicitudes", href: "/requests", icon: MailQuestion },
@@ -41,7 +43,7 @@ export function Sidebar() {
         <Wrench className="h-6 w-6 text-primary" />
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold tracking-tight">ToolTracker</span>
-          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">v4.0</span>
+          <VersionChecker />
         </div>
       </div>
       <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">

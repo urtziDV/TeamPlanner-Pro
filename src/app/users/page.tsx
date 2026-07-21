@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { UsersClient } from "./UsersClient";
+import { getKits } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,14 @@ export default async function UsersPage() {
   const allTools = await prisma.herramientas.findMany();
 
   const activeAssignments = await prisma.asignaciones.findMany({
-    where: { Estado: 'Activo' }
+    where: {
+      OR: [
+        { Estado: 'Activa' },
+        { Estado: 'Activo' },
+        { Estado: null },
+        { Estado: '' }
+      ]
+    }
   });
 
   const allSolicitudes = await prisma.solicitudes.findMany();
@@ -28,9 +36,12 @@ export default async function UsersPage() {
     orderBy: { Fecha_Entrega: 'desc' }
   });
 
+  const kits = await getKits();
+
   return <UsersClient 
     initialUsers={users} 
     departments={departments} 
+    kits={kits}
     basicTools={allBasicTools} 
     activeAssignments={activeAssignments} 
     allSolicitudes={allSolicitudes}

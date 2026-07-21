@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createIncidente, deleteIncidente } from "@/app/actions";
 
-export function IncidentsClient({ incidentes }: { incidentes: any[] }) {
+export function IncidentsClient({ incidentes, usuarios = [], herramientas = [] }: { incidentes: any[], usuarios?: any[], herramientas?: any[] }) {
   const [incOpen, setIncOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
@@ -66,19 +66,31 @@ export function IncidentsClient({ incidentes }: { incidentes: any[] }) {
               </DialogHeader>
               <form onSubmit={handleCreateInc} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Herramienta</Label>
-                  <Input 
-                    value={incData.Herramienta} 
-                    onChange={(e) => setIncData({...incData, Herramienta: e.target.value})} 
-                    required
-                  />
+                  <Label>Usuario Responsable</Label>
+                  <select
+                    value={incData.Usuario}
+                    onChange={(e) => setIncData({ ...incData, Usuario: e.target.value, Herramienta: "" })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">-- Ninguno / Seleccionar --</option>
+                    {usuarios.map(u => (
+                      <option key={u.ID} value={u.Nombre}>{u.Nombre}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Usuario Responsable</Label>
-                  <Input 
-                    value={incData.Usuario} 
-                    onChange={(e) => setIncData({...incData, Usuario: e.target.value})} 
-                  />
+                  <Label>Herramienta</Label>
+                  <select
+                    value={incData.Herramienta}
+                    onChange={(e) => setIncData({ ...incData, Herramienta: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">-- Seleccionar herramienta --</option>
+                    {herramientas.map(h => (
+                      <option key={h.ID} value={h.Nombre}>{h.Nombre}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -141,9 +153,9 @@ export function IncidentsClient({ incidentes }: { incidentes: any[] }) {
                 <td className="p-4 align-middle">{i.Fecha}</td>
                 <td className="p-4 align-middle text-right font-mono">{i.Costo ? `${i.Costo} €` : 'N/A'}</td>
                 <td className="p-4 align-middle text-right">
-                  <button onClick={() => handleDelInc(i.ID)} className="p-1.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDelInc(i.ID)} className="p-1.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

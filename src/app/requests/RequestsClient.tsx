@@ -265,10 +265,10 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
                     <p className="text-xs text-muted-foreground mt-1">{sol.Fecha.split('T')[0]}</p>
                   </div>
                   <div className="flex flex-col gap-1 items-end shrink-0">
-                    <Button variant="outline" size="sm" className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200" onClick={() => handleDeliver(sol)}>
+                    <Button title="Confirmar / Entregar" variant="outline" size="sm" className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200" onClick={() => handleDeliver(sol)}>
                       <Check className="h-4 w-4 mr-1" /> Atender
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-destructive w-full justify-end px-2" onClick={() => handleDelete(sol.ID)}>
+                    <Button title="Eliminar" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-destructive w-full justify-end px-2" onClick={() => handleDelete(sol.ID)}>
                       <Trash2 className="h-4 w-4 mr-1" /> Borrar
                     </Button>
                   </div>
@@ -312,10 +312,10 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
                     <td className="p-4 align-middle">{sol.Usuario}</td>
                     <td className="p-4 align-middle text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleDeliver(sol)}>
+                        <Button title="Confirmar / Entregar" variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleDeliver(sol)}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(sol.ID)}>
+                        <Button title="Eliminar" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(sol.ID)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -380,10 +380,10 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
                           <p className="text-xs text-muted-foreground mt-1">{sol.Fecha.split('T')[0]} {sol.Fecha.split('T')[1] ? `• ${sol.Fecha.split('T')[1].substring(0,5)}` : ''}</p>
                         </div>
                         <div className="flex gap-2 mt-auto pt-2">
-                          <Button variant="outline" size="sm" className="flex-1 text-green-700 hover:text-green-800 hover:bg-green-100 border-green-200 bg-green-50/50" onClick={() => { setSelectedGroup(null); handleDeliver(sol); }}>
+                          <Button title="Confirmar / Entregar" variant="outline" size="sm" className="flex-1 text-green-700 hover:text-green-800 hover:bg-green-100 border-green-200 bg-green-50/50" onClick={() => { setSelectedGroup(null); handleDeliver(sol); }}>
                             <Check className="h-4 w-4 mr-1.5" /> Entregar
                           </Button>
-                          <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-red-50 bg-white" onClick={() => { setSelectedGroup(null); handleDelete(sol.ID); }}>
+                          <Button title="Eliminar" variant="outline" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-red-50 bg-white" onClick={() => { setSelectedGroup(null); handleDelete(sol.ID); }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

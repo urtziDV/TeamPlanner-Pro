@@ -7,6 +7,8 @@ export default async function IncidentsPage() {
   const incidentes = await prisma.incidentes.findMany({
     orderBy: { Fecha: 'desc' }
   });
+  const usuarios = await prisma.usuarios.findMany();
+  const herramientas = await prisma.herramientas.findMany();
 
-  return <IncidentsClient incidentes={incidentes} />;
+  return <IncidentsClient incidentes={incidentes} usuarios={usuarios} herramientas={herramientas} />;
 }

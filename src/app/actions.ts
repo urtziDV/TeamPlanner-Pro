@@ -368,7 +368,7 @@ export async function updateUbicacion(id: string, data: { Nombre: string, Vehicu
   return updated;
 }
 
-export async function updateVehicleAssignment(id: string, data: { usuario: string, fechaInicio?: string, fechaFin?: string }) {
+export async function updateVehicleAssignment(id: string, data: { usuario: string, fechaInicio?: string, fechaFin?: string, observaciones?: string }) {
   const ubicacion = await prisma.ubicaciones.findUnique({ where: { ID: id } });
   const today = new Date().toISOString().split('T')[0];
   
@@ -423,7 +423,8 @@ export async function updateVehicleAssignment(id: string, data: { usuario: strin
       Usuario_Nombre: data.usuario,
       Fecha_Entrega: start,
       Fecha_Esperada_Devolucion: data.fechaFin || null,
-      Estado: isCurrent ? 'Activa' : 'Reserva'
+      Estado: isCurrent ? 'Activa' : 'Reserva',
+      Observaciones: data.observaciones
     }
   });
 
@@ -686,3 +687,148 @@ export async function sendEmailAction(to: string, subject: string, text: string)
     return { success: false, message: "Error al enviar correo: " + err.message };
   }
 }
+
+export async function getChangelog() {
+  try {
+    const changelogPath = path.join(process.cwd(), 'CHANGELOG.md');
+    const content = fs.readFileSync(changelogPath, 'utf8');
+    return { success: true, content };
+  } catch (err: any) {
+    return { success: false, message: "No se pudo leer el Changelog: " + err.message };
+  }
+}
+
+// Departamentos
+export async function createDepartamento(data: { Nombre: string, Icono?: string }) {
+  return prisma.departamentos.create({
+    data: {
+      ID: crypto.randomUUID(),
+      Nombre: data.Nombre,
+      Icono: data.Icono
+    }
+  });
+}
+
+export async function updateDepartamento(id: string, data: { Nombre?: string, Icono?: string }) {
+  return prisma.departamentos.update({
+    where: { ID: id },
+    data
+  });
+}
+
+export async function deleteDepartamento(id: string) {
+  return prisma.departamentos.delete({ where: { ID: id } });
+}
+
+// TiposRecordatorios (Plantillas)
+export async function createTipoRecordatorio(data: { Nombre: string, Plantilla: string }) {
+  return prisma.tiposRecordatorios.create({
+    data: {
+      ID: crypto.randomUUID(),
+      Nombre: data.Nombre,
+      Plantilla: data.Plantilla
+    }
+  });
+}
+
+export async function updateTipoRecordatorio(id: string, data: { Nombre?: string, Plantilla?: string }) {
+  return prisma.tiposRecordatorios.update({
+    where: { ID: id },
+    data
+  });
+}
+
+export async function deleteTipoRecordatorio(id: string) {
+  return prisma.tiposRecordatorios.delete({ where: { ID: id } });
+}
+
+// Kits Predefinidos
+export async function getKits() {
+  const conf = await prisma.config.findUnique({ where: { key: 'kits_predefinidos' } });
+  if (conf?.value) return JSON.parse(conf.value);
+  return [];
+}
+
+export async function saveKits(kits: any[]) {
+  await prisma.config.upsert({
+    where: { key: 'kits_predefinidos' },
+    update: { value: JSON.stringify(kits) },
+    create: { key: 'kits_predefinidos', value: JSON.stringify(kits) }
+  });
+  revalidatePath('/categories');
+  revalidatePath('/users');
+}
+
+export async function assignKitToUser(userId: string, userName: string, kitTools: string[]) {
+  const allTools = await prisma.herramientas.findMany({ where: { Estado: 'Disponible' } });
+  const assigned: string[] = [];
+  const missing: string[] = [];
+  const usedIds = new Set<string>();
+
+  for (const toolName of kitTools) {
+    const availableTool = allTools.find(t => t.Nombre === toolName && !usedIds.has(t.ID));
+    if (availableTool) {
+      usedIds.add(availableTool.ID);
+      await createAsignacion({
+        Herramienta_ID: availableTool.ID,
+        Herramienta: availableTool.Nombre || "Desconocida",
+        Usuario_ID: userId,
+        Usuario: userName,
+        Motivo: "Material Predefinido (Kit)"
+      });
+      assigned.push(toolName);
+    } else {
+      missing.push(toolName);
+    }
+  }
+  
+  revalidatePath('/users');
+  revalidatePath('/inventory');
+  return { success: true, assigned, missing };
+}
+
+// Scanner Bulk Actions
+export async function bulkAssignTools(userId: string, userName: string, toolIds: string[]) {
+  let assignedCount = 0;
+  for (const id of toolIds) {
+    const tool = await prisma.herramientas.findUnique({ where: { ID: id } });
+    if (tool && tool.Estado === 'Disponible') {
+      await createAsignacion({
+        Herramienta_ID: tool.ID,
+        Herramienta: tool.Nombre || "Desconocida",
+        Usuario_ID: userId,
+        Usuario: userName,
+        Motivo: "Asignación Masiva (Escáner)"
+      });
+      assignedCount++;
+    }
+  }
+  revalidatePath('/inventory');
+  revalidatePath('/users');
+  return { success: true, count: assignedCount };
+}
+
+export async function bulkReturnTools(toolIds: string[]) {
+  let returnCount = 0;
+  for (const id of toolIds) {
+    const tool = await prisma.herramientas.findUnique({ where: { ID: id } });
+    if (tool && tool.Estado === 'Prestada') {
+      // Find active assignment
+      const asignaciones = await prisma.asignaciones.findMany({
+        where: { Herramienta_ID: id },
+        orderBy: { Fecha_Entrega: 'desc' },
+        take: 1
+      });
+      
+      if (asignaciones.length > 0) {
+        // Use the existing deleteAsignacion function which handles history creation and state change
+        await deleteAsignacion(asignaciones[0].ID, id, "Devuelto OK");
+        returnCount++;
+      }
+    }
+  }
+  revalidatePath('/inventory');
+  revalidatePath('/users');
+  return { success: true, count: returnCount };
+}
+

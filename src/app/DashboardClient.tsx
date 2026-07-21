@@ -74,7 +74,7 @@ export function DashboardClient({
             </Button>
           </Link>
           <Link href="/loans">
-            <Button className="gap-2 shadow-md">
+            <Button title="Asignar / Prestar" className="gap-2 shadow-md">
               <Handshake className="h-4 w-4" /> Nuevo Préstamo
             </Button>
           </Link>
