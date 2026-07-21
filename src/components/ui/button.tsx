@@ -59,9 +59,7 @@ function Button({
   if (props.title) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>
-          {btn}
-        </TooltipTrigger>
+        <TooltipTrigger render={btn} />
         <TooltipContent>
           <p>{props.title}</p>
         </TooltipContent>

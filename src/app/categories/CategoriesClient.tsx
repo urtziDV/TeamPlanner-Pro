@@ -360,8 +360,14 @@ export function CategoriesClient({
               <p className="text-sm text-muted-foreground">Grupos de herramientas para asignar en bloque.</p>
             </div>
             <Dialog open={openKit} onOpenChange={setOpenKit}>
-              <DialogTrigger render={<Button onClick={handleOpenNewKit} />}>
-                <Plus className="h-4 w-4 mr-2" /> Nuevo Kit
+              <DialogTrigger asChild>
+                <Button onClick={() => {
+                  setKitEditingId(null);
+                  setKitNombre("");
+                  setKitTools([]);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" /> Nuevo Kit
+                </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader><DialogTitle>{kitEditingId ? "Editar Kit" : "Añadir Kit"}</DialogTitle></DialogHeader>
