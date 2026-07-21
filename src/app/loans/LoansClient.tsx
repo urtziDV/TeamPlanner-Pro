@@ -203,7 +203,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
         
         <div className="flex flex-wrap items-center gap-3">
           <Dialog open={openBulk} onOpenChange={setOpenBulk}>
-            <DialogTrigger asChild><Button variant="secondary" className="border-orange-500/30 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20" onClick={() => setOpenBulk(true)}><Zap className="h-4 w-4 mr-2 text-orange-500" /> Escáner Masivo</Button></DialogTrigger>
+            <DialogTrigger render={<Button variant="secondary" className="border-orange-500/30 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20" onClick={() => setOpenBulk(true)}><Zap className="h-4 w-4 mr-2 text-orange-500" /> Escáner Masivo</Button>} />
             <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-orange-500" /> Escáner Masivo (Acciones en Lote)</DialogTitle>
