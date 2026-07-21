@@ -82,7 +82,7 @@ export function DashboardClient({
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => [`€${value.toFixed(2)}`, 'Inversión']} />
+                <RechartsTooltip formatter={(value: any) => [`€${Number(value || 0).toFixed(2)}`, 'Inversión']} />
               </PieChart>
             </ResponsiveContainer>
           </div>
