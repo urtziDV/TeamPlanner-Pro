@@ -15,7 +15,7 @@ execSync('npx next build', { stdio: 'inherit', cwd: rootDir });
 
 console.log('3. Moving standalone server...');
 const dotNextStandalone = path.join(rootDir, '.next', 'standalone');
-fs.copySync(dotNextStandalone, nextStandaloneDir);
+fs.cpSync(dotNextStandalone, nextStandaloneDir, { recursive: true, dereference: true });
 
 console.log('4. Copying static files and Turbopack binaries...');
 fs.copySync(path.join(rootDir, 'public'), path.join(nextStandaloneDir, 'public'));
