@@ -69,11 +69,13 @@
     ],
     "files": [
       "electron/**/*",
-      "next-standalone/**/*",
       "prisma/dev.db"
     ],
     "extraResources": [
-      "next-standalone/node_modules/**/*"
+      {
+        "from": "next-standalone",
+        "to": "next-standalone"
+      }
     ],
     "afterPack": "./afterPack.js",
     "win": {

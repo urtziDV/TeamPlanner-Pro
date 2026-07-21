@@ -3,15 +3,15 @@
   <p><strong>El sistema definitivo de gestión de activos, inventario y logística para equipos de alto rendimiento.</strong></p>
 
   <p>
-    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js" /></a>
-    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react" alt="React" /></a>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" alt="Next.js" /></a>
+    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React" /></a>
     <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" /></a>
     <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white" alt="Prisma" /></a>
     <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
   </p>
   <p>
     <img src="https://img.shields.io/badge/Status-Active-success?style=flat-square" alt="Status" />
-    <img src="https://img.shields.io/badge/Version-4.0.0-blue?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-4.1.0-blue?style=flat-square" alt="Version" />
     <img src="https://img.shields.io/badge/License-Proprietary-red?style=flat-square" alt="License" />
   </p>
 </div>

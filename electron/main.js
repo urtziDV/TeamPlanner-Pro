@@ -40,7 +40,8 @@ function createWindow() {
 }
 
 function startNextServer() {
-  const serverPath = path.join(app.getAppPath(), 'next-standalone', 'server.js');
+  // next-standalone is in resources/, not inside the asar bundle
+  const serverPath = path.join(process.resourcesPath, 'next-standalone', 'server.js');
   
   // Set ELECTRON_NO_ASAR to 1 to bypass electron's fs patches in Next.js environment
   const env = {
