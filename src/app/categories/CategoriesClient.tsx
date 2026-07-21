@@ -160,6 +160,31 @@ export function CategoriesClient({
     if (ok) { await deleteTipoRecordatorio(id); setTiposRecordatorios(prev => prev.filter(t => t.ID !== id)); }
   };
 
+  const handleOpenEditKit = (k: any) => { setKitEditingId(k.id); setKitNombre(k.nombre); setKitTools(k.herramientas || []); setOpenKit(true); };
+
+  const handleSaveKit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!kitNombre) return;
+    let newKits = [...kits];
+    if (kitEditingId) {
+      newKits = newKits.map((k: any) => k.id === kitEditingId ? { ...k, nombre: kitNombre, herramientas: kitTools } : k);
+    } else {
+      newKits.push({ id: Date.now().toString(), nombre: kitNombre, herramientas: kitTools });
+    }
+    setKits(newKits);
+    await saveKits(newKits);
+    setOpenKit(false);
+  };
+
+  const handleDeleteKit = async (id: string) => {
+    const ok = await confirm({ title: "Eliminar Kit", message: "¿Estás seguro de que quieres eliminar este kit?", variant: "destructive", confirmLabel: "Eliminar" });
+    if (ok) {
+      const newKits = kits.filter((k: any) => k.id !== id);
+      setKits(newKits);
+      await saveKits(newKits);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6 overflow-y-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
