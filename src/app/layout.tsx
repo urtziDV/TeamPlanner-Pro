@@ -26,7 +26,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider delayDuration={200}>
+          <TooltipProvider delay={200}>
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">
               {children}
