@@ -104,7 +104,7 @@ export function DashboardClient({
                 <BarChart data={topLossUsersData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} />
-                  <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(value: number) => [`€${value.toFixed(2)}`, 'Coste Total']} />
+                  <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(value: any) => [`€${Number(value || 0).toFixed(2)}`, 'Coste Total']} />
                   <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
