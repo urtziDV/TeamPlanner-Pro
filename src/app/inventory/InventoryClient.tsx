@@ -41,7 +41,8 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
   
   const defaultForm = { 
     Nombre: "", Categoria: "", Estado: "Disponible", SN: [] as string[], Ubicacion: "",
-    Valor: "", Observaciones: "", Es_Generica: false, Es_Basica: false, Apto_Proyecto: false, Imagen_URL: ""
+    Valor: "", Observaciones: "", Es_Generica: false, Es_Basica: false, Apto_Proyecto: false, Imagen_URL: "",
+    Cantidad_Total: 1
   };
   const [formData, setFormData] = useState(defaultForm);
   const [snInput, setSnInput] = useState("");
@@ -91,7 +92,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
       Nombre: tool.Nombre || "",
       Categoria: tool.Categoria || "",
       Estado: tool.Estado || "Disponible",
-      SN: tool.SN ? tool.SN.split(/[\s,]+/).filter(Boolean) : [],
+      SN: tool.SN ? tool.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [],
       Ubicacion: tool.Ubicacion || "",
       Valor: tool.Valor || "",
       Observaciones: tool.Observaciones || "",
@@ -99,6 +100,7 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
       Es_Basica: tool.Es_Basica === 1,
       Apto_Proyecto: tool.Apto_Proyecto === 1,
       Imagen_URL: tool.Imagen_URL || "",
+      Cantidad_Total: tool.Cantidad_Total || 1,
     });
     setEditOpen(true);
   };
@@ -220,6 +222,19 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                     <option value="Baja">Baja</option>
                   </select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cantidad">Cantidad Física Total</Label>
+                <Input 
+                  id="cantidad" 
+                  type="number"
+                  min={1}
+                  value={formData.Cantidad_Total} 
+                  onChange={(e) => setFormData({...formData, Cantidad_Total: parseInt(e.target.value) || 1})} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Define cuántas herramientas físicas hay. Si introduces menos que el número de SNs guardados, el sistema contará la cantidad mayor para proteger el stock.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -354,17 +369,30 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                         <h3 className="font-semibold leading-none tracking-tight truncate" title={h.Nombre}>{h.Nombre}</h3>
                         <p className="text-sm text-muted-foreground mt-1 truncate">{h.Categoria}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {h.Estado === "Disponible" ? (
-                            <span className="inline-flex items-center rounded-md border border-green-500/20 bg-green-500/10 text-green-500 px-2 py-0.5 text-[10px] font-semibold">
-                              Disponible
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold">
-                              {h.Estado}
-                            </span>
-                          )}
+                          {(() => {
+                            const sns = h.SN ? h.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+                            const hasMultiple = sns.length > 1 || (h.Cantidad_Total && h.Cantidad_Total > 1);
+                            
+                            if (hasMultiple && h._disponibles !== undefined && h._disponibles !== null) {
+                              return (
+                                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${h._disponibles > 0 ? 'border-green-500/20 bg-green-500/10 text-green-500' : 'border-orange-500/20 bg-orange-500/10 text-orange-500'}`}>
+                                  {h._disponibles} {h._disponibles === 1 ? 'Disponible' : 'Disponibles'}
+                                </span>
+                              );
+                            }
+                            
+                            return h.Estado === "Disponible" ? (
+                              <span className="inline-flex items-center rounded-md border border-green-500/20 bg-green-500/10 text-green-500 px-2 py-0.5 text-[10px] font-semibold">
+                                Disponible
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold">
+                                {h.Estado}
+                              </span>
+                            );
+                          })()}
                           {h.SN && (() => {
-                            const sns = h.SN.split(',').map((s: string) => s.trim()).filter(Boolean);
+                            const sns = h.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean);
                             if (sns.length > 0) {
                               return (
                                 <span className="inline-flex items-center rounded-md border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold">
@@ -419,7 +447,8 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                       <div className="flex flex-col">
                         <span>{h.Nombre}</span>
                         {h.SN && (() => {
-                          const sns = h.SN.split(',').map((s: string) => s.trim()).filter(Boolean);
+                          const sns = h.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean);
+                          if (sns.length === 0) return null;
                           return (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               SN: <span className="font-mono">{sns[0]}</span>
@@ -439,15 +468,28 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                       </span>
                     </td>
                     <td className="p-4 align-middle">
-                      {h.Estado === "Disponible" ? (
-                        <span className="inline-flex items-center rounded-md border border-green-500/20 bg-green-500/10 text-green-500 px-2.5 py-0.5 text-xs font-semibold">
-                          Disponible
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold">
-                          {h.Estado}
-                        </span>
-                      )}
+                      {(() => {
+                        const sns = h.SN ? h.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+                        const hasMultiple = sns.length > 1 || (h.Cantidad_Total && h.Cantidad_Total > 1);
+                        
+                        if (hasMultiple && h._disponibles !== undefined && h._disponibles !== null) {
+                          return (
+                            <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${h._disponibles > 0 ? 'border-green-500/20 bg-green-500/10 text-green-500' : 'border-orange-500/20 bg-orange-500/10 text-orange-500'}`}>
+                              {h._disponibles} {h._disponibles === 1 ? 'Disponible' : 'Disponibles'}
+                            </span>
+                          );
+                        }
+                        
+                        return h.Estado === "Disponible" ? (
+                          <span className="inline-flex items-center rounded-md border border-green-500/20 bg-green-500/10 text-green-500 px-2.5 py-0.5 text-xs font-semibold">
+                            Disponible
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold">
+                            {h.Estado}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -567,6 +609,20 @@ export function InventoryClient({ initialTools, categorias }: { initialTools: an
                         <option value="Pérdida">Pérdida</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cantidad">Cantidad Física Total</Label>
+                    <Input 
+                      id="edit-cantidad" 
+                      type="number"
+                      min={1}
+                      value={formData.Cantidad_Total} 
+                      onChange={(e) => setFormData({...formData, Cantidad_Total: parseInt(e.target.value) || 1})} 
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Define cuántas herramientas físicas hay. Si introduces menos que el número de SNs guardados, el sistema contará la cantidad mayor para proteger el stock.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

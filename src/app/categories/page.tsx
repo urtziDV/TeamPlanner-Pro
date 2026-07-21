@@ -8,5 +8,10 @@ export default async function CategoriesPage() {
     orderBy: { Nombre: 'asc' }
   });
 
-  return <CategoriesClient initialCategorias={categorias} />;
+  const ubicaciones = await prisma.ubicaciones.findMany({
+    where: { Tipo: 'Sitio' },
+    orderBy: { Nombre: 'asc' }
+  });
+
+  return <CategoriesClient initialCategorias={categorias} initialUbicaciones={ubicaciones} />;
 }

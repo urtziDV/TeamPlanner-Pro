@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Monitor, Database, Moon, Sun, HardDrive, Save, FolderOpen, Download, Upload } from "lucide-react";
+import { Monitor, Database, Moon, Sun, Mail, Save, FolderOpen, Download, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,11 @@ export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[]
   const [configData, setConfigData] = useState({
     dbPath: initialConfigs.find(c => c.key === "dbPath")?.value || "",
     backupPath: initialConfigs.find(c => c.key === "backupPath")?.value || "",
-    backupCopies: initialConfigs.find(c => c.key === "backupCopies")?.value || "5"
+    backupCopies: initialConfigs.find(c => c.key === "backupCopies")?.value || "5",
+    smtpHost: initialConfigs.find(c => c.key === "smtpHost")?.value || "",
+    smtpPort: initialConfigs.find(c => c.key === "smtpPort")?.value || "",
+    smtpUser: initialConfigs.find(c => c.key === "smtpUser")?.value || "",
+    smtpPass: initialConfigs.find(c => c.key === "smtpPass")?.value || "",
   });
 
   // Avoid hydration mismatch — only render theme-dependent UI after mount
@@ -28,7 +32,11 @@ export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[]
     await updateConfigs([
       { key: "dbPath", value: configData.dbPath },
       { key: "backupPath", value: configData.backupPath },
-      { key: "backupCopies", value: configData.backupCopies }
+      { key: "backupCopies", value: configData.backupCopies },
+      { key: "smtpHost", value: configData.smtpHost },
+      { key: "smtpPort", value: configData.smtpPort },
+      { key: "smtpUser", value: configData.smtpUser },
+      { key: "smtpPass", value: configData.smtpPass }
     ]);
     setSaving(false);
   };
@@ -189,6 +197,64 @@ export function SettingsClient({ initialConfigs = [] }: { initialConfigs?: any[]
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+        {/* Servidor de Correo */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow md:col-span-2">
+          <div className="p-6 border-b">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg">Servidor de Correo (SMTP)</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configura los credenciales para el envío de recordatorios automáticos por email.
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="smtpHost">Servidor SMTP (Host)</Label>
+                <Input 
+                  id="smtpHost" 
+                  placeholder="ej. smtp.office365.com"
+                  value={configData.smtpHost}
+                  onChange={e => setConfigData({...configData, smtpHost: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtpPort">Puerto</Label>
+                <Input 
+                  id="smtpPort" 
+                  placeholder="ej. 587"
+                  value={configData.smtpPort}
+                  onChange={e => setConfigData({...configData, smtpPort: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtpUser">Usuario / Email</Label>
+                <Input 
+                  id="smtpUser" 
+                  placeholder="ej. notificaciones@miempresa.com"
+                  value={configData.smtpUser}
+                  onChange={e => setConfigData({...configData, smtpUser: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtpPass">Contraseña</Label>
+                <Input 
+                  id="smtpPass" 
+                  type="password"
+                  value={configData.smtpPass}
+                  onChange={e => setConfigData({...configData, smtpPass: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSaveConfigs} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Guardando..." : "Guardar Configuración"}
+              </Button>
             </div>
           </div>
         </div>

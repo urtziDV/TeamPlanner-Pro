@@ -14,7 +14,6 @@ export default async function LoansPage() {
   });
 
   const tools = await prisma.herramientas.findMany({
-    where: { Estado: 'Disponible' },
     orderBy: { Nombre: 'asc' }
   });
 

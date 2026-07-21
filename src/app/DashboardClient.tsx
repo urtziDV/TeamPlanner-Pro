@@ -18,7 +18,8 @@ export function DashboardClient({
   latestLoans,
   latestIncidents,
   topUsers,
-  inventoryStats
+  inventoryStats,
+  maintenanceAlerts
 }: {
   totalTools: number;
   loanedTools: number;
@@ -33,6 +34,7 @@ export function DashboardClient({
   latestIncidents: any[];
   topUsers: any[];
   inventoryStats: any[];
+  maintenanceAlerts?: any[];
 }) {
   
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -177,6 +179,35 @@ export function DashboardClient({
           </div>
         </div>
       </div>
+
+      {maintenanceAlerts && maintenanceAlerts.length > 0 && (
+        <div className="rounded-2xl border border-orange-200 bg-orange-50/30 p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <h3 className="font-semibold text-lg text-orange-800">Alertas de Mantenimiento y Calibración</h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {maintenanceAlerts.map((alert, i) => (
+              <div key={i} className="bg-white dark:bg-card p-4 rounded-xl border shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold text-sm line-clamp-1" title={alert.toolName}>{alert.toolName}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${alert.isOverdue ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                    {alert.isOverdue ? 'Caducado' : 'Próximo'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground flex justify-between">
+                  <span>{alert.type}</span>
+                  <span className="font-medium">
+                    {alert.isOverdue 
+                      ? `Hace ${Math.abs(alert.daysRemaining)} días` 
+                      : `En ${alert.daysRemaining} días`}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
 

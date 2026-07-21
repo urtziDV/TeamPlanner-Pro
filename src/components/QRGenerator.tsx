@@ -62,9 +62,7 @@ export function QRGenerator({
         ctx.fillStyle = "#475569";
         ctx.fillText(label, 180, 90, 200);
         
-        ctx.font = "12px monospace";
-        ctx.fillStyle = "#94a3b8";
-        ctx.fillText(`ID: ${toolId}`, 180, 120, 200);
+        // Removed ID rendering
         
         const pngUrl = stickerCanvas.toDataURL("image/png");
         let downloadLink = document.createElement("a");
@@ -88,18 +86,18 @@ export function QRGenerator({
           <QrCode className="h-4 w-4" />
         </button>
       } />
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-6">
+      <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col p-6">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">{title || "Código(s) QR"}</DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto mt-4 px-2 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {qrs.map((qr) => {
               const domId = `qr-code-${qr.id}`;
               return (
                 <div key={qr.id} className="flex flex-col items-center bg-white p-4 rounded-xl shadow-sm border hover:border-primary/50 transition-colors">
-                  <div className="flex flex-row items-center w-full max-w-sm border rounded-lg p-2 mb-4 bg-white">
+                  <div className="flex flex-row items-center w-full border rounded-lg p-2 mb-4 bg-white">
                      <QRCodeCanvas 
                        id={domId}
                        value={qr.data} 
@@ -107,10 +105,9 @@ export function QRGenerator({
                        level={"H"}
                        includeMargin={true}
                      />
-                     <div className="ml-4 flex flex-col items-start overflow-hidden">
-                       <p className="text-sm font-bold truncate w-full" title={title}>{title || "Herramienta"}</p>
-                       <p className="text-xs text-slate-600 mt-1 truncate w-full">{qr.label}</p>
-                       <p className="text-[10px] text-slate-400 font-mono mt-1 truncate w-full" title={toolId}>ID: {toolId}</p>
+                     <div className="ml-4 flex flex-col items-start flex-1 min-w-0">
+                       <p className="text-sm font-bold break-words w-full" title={title}>{title || "Herramienta"}</p>
+                       <p className="text-xs text-slate-600 mt-1 break-words w-full">{qr.label}</p>
                      </div>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => handleDownload(qr.id, qr.label)} className="w-full text-xs">

@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
+import { logReminderAction } from "@/app/actions";
 
 export function WhatsAppButton({ 
   phone, 
@@ -27,6 +28,13 @@ export function WhatsAppButton({
       ? `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
       
+    logReminderAction({
+      Herramienta: toolName,
+      Usuario: userName,
+      Tipo: daysOverdue > 0 ? "Retraso" : "Aviso Preventivo",
+      Via: "WhatsApp",
+      Mensaje: text
+    });
     window.open(url, '_blank');
   };
 

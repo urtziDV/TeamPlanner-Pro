@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Bell, AlertCircle, Clock, CalendarDays, Send } from "lucide-react";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { EmailButton } from "@/components/EmailButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function RemindersPage() {
       const isOverdue = limitDate ? limitDate < today : false;
       const daysDiff = limitDate ? Math.ceil((limitDate.getTime() - today.getTime()) / (1000 * 3600 * 24)) : 999;
       const userRecord = loan.Usuario ? usersByName.get(loan.Usuario) : null;
-      return { ...loan, limitDate, isOverdue, daysDiff, phone: userRecord?.Telefono };
+      return { ...loan, limitDate, isOverdue, daysDiff, phone: userRecord?.Telefono, email: userRecord?.Email };
     })
     .filter(loan => loan.daysDiff <= 7) // Show overdue and due within 7 days
     .sort((a, b) => a.daysDiff - b.daysDiff);
@@ -119,6 +120,12 @@ export default async function RemindersPage() {
                           )}
                           <WhatsAppButton 
                             phone={loan.phone} 
+                            toolName={loan.Herramienta || 'Herramienta'} 
+                            userName={loan.Usuario || 'Usuario'}
+                            daysOverdue={loan.isOverdue ? Math.abs(loan.daysDiff) : 0}
+                          />
+                          <EmailButton 
+                            email={loan.email} 
                             toolName={loan.Herramienta || 'Herramienta'} 
                             userName={loan.Usuario || 'Usuario'}
                             daysOverdue={loan.isOverdue ? Math.abs(loan.daysDiff) : 0}

@@ -6,6 +6,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
+import nodemailer from "nodemailer";
 
 const execAsync = promisify(exec);
 
@@ -57,6 +58,7 @@ export async function createHerramienta(data: any) {
       Es_Generica: data.Es_Generica ? 1 : 0,
       Es_Basica: data.Es_Basica ? 1 : 0,
       Apto_Proyecto: data.Apto_Proyecto ? 1 : 0,
+      Cantidad_Total: parseInt(data.Cantidad_Total) || 1,
     }
   });
   revalidatePath("/inventory");
@@ -87,6 +89,7 @@ export async function updateHerramienta(id: string, data: any) {
       Es_Generica: data.Es_Generica ? 1 : 0,
       Es_Basica: data.Es_Basica ? 1 : 0,
       Apto_Proyecto: data.Apto_Proyecto ? 1 : 0,
+      Cantidad_Total: parseInt(data.Cantidad_Total) || 1,
     }
   });
   revalidatePath("/inventory");
@@ -238,7 +241,7 @@ export async function updateUsuario(id: string, data: { Nombre: string, Departam
   return updated;
 }
 
-export async function createAsignacion(data: { Herramienta_ID: string, Herramienta: string, Usuario_ID: string, Usuario: string, Motivo?: string, Fecha_Limite?: string }) {
+export async function createAsignacion(data: { Herramienta_ID: string, Herramienta: string, Usuario_ID: string, Usuario: string, Motivo?: string, Fecha_Limite?: string, Fecha_Entrega?: string }) {
   const newLoan = await prisma.asignaciones.create({
     data: {
       ID: crypto.randomUUID(),
@@ -247,7 +250,7 @@ export async function createAsignacion(data: { Herramienta_ID: string, Herramien
       Usuario_ID: data.Usuario_ID,
       Usuario: data.Usuario,
       Fecha: new Date().toISOString(),
-      Fecha_Entrega: new Date().toISOString().split('T')[0],
+      Fecha_Entrega: data.Fecha_Entrega || new Date().toISOString().split('T')[0],
       Estado: "Activo",
       Motivo: data.Motivo,
       Fecha_Limite: data.Fecha_Limite
@@ -350,48 +353,117 @@ export async function deleteUbicacion(id: string) {
   revalidatePath("/vehicles");
 }
 
-export async function updateUbicacion(id: string, data: { Nombre: string, Vehiculo_Marca?: string, Vehiculo_Modelo?: string, Vehiculo_Matricula?: string }) {
+export async function updateUbicacion(id: string, data: { Nombre: string, Vehiculo_Marca?: string, Vehiculo_Modelo?: string, Vehiculo_Matricula?: string, Imagen_URL?: string }) {
   const updated = await prisma.ubicaciones.update({
     where: { ID: id },
     data: {
       Nombre: data.Nombre,
       Vehiculo_Marca: data.Vehiculo_Marca,
       Vehiculo_Modelo: data.Vehiculo_Modelo,
-      Vehiculo_Matricula: data.Vehiculo_Matricula
+      Vehiculo_Matricula: data.Vehiculo_Matricula,
+      Imagen_URL: data.Imagen_URL
     }
   });
   revalidatePath("/vehicles");
   return updated;
 }
 
-export async function updateVehicleAssignment(id: string, usuario: string) {
+export async function updateVehicleAssignment(id: string, data: { usuario: string, fechaInicio?: string, fechaFin?: string }) {
   const ubicacion = await prisma.ubicaciones.findUnique({ where: { ID: id } });
+  const today = new Date().toISOString().split('T')[0];
   
-  // If it was assigned before, log it to history
-  if (ubicacion?.Vehiculo_Asignado_A) {
-    await prisma.historialVehiculos.create({
+  if (!data.usuario) {
+    // Devolvemos el vehículo actual
+    if (ubicacion?.Vehiculo_Asignado_A) {
+      const active = await prisma.historialVehiculos.findFirst({
+        where: { Vehiculo_ID: id, Estado: 'Activa' }
+      });
+      if (active) {
+        await prisma.historialVehiculos.update({
+          where: { ID: active.ID },
+          data: {
+            Fecha_Devolucion: today,
+            Estado: 'Completada'
+          }
+        });
+      } else {
+        await prisma.historialVehiculos.create({
+          data: {
+            ID: crypto.randomUUID(),
+            Vehiculo_ID: id,
+            Vehiculo_Nombre: ubicacion.Nombre,
+            Usuario_Nombre: ubicacion.Vehiculo_Asignado_A,
+            Fecha_Entrega: ubicacion.Vehiculo_Fecha_Asignacion,
+            Fecha_Devolucion: today,
+            Estado: 'Completada'
+          }
+        });
+      }
+    }
+    const updated = await prisma.ubicaciones.update({
+      where: { ID: id },
       data: {
-        ID: crypto.randomUUID(),
-        Vehiculo_ID: id,
-        Vehiculo_Nombre: ubicacion.Nombre,
-        Usuario_Nombre: ubicacion.Vehiculo_Asignado_A,
-        Fecha_Entrega: ubicacion.Vehiculo_Fecha_Asignacion,
-        Fecha_Devolucion: new Date().toISOString().split('T')[0],
+        Vehiculo_Asignado_A: null,
+        Vehiculo_Fecha_Asignacion: null
+      }
+    });
+    revalidatePath("/vehicles");
+    return updated;
+  }
+
+  // Asignamos o reservamos
+  const start = data.fechaInicio || today;
+  const isCurrent = start <= today;
+
+  await prisma.historialVehiculos.create({
+    data: {
+      ID: crypto.randomUUID(),
+      Vehiculo_ID: id,
+      Vehiculo_Nombre: ubicacion?.Nombre || "",
+      Usuario_Nombre: data.usuario,
+      Fecha_Entrega: start,
+      Fecha_Esperada_Devolucion: data.fechaFin || null,
+      Estado: isCurrent ? 'Activa' : 'Reserva'
+    }
+  });
+
+  let updated = ubicacion;
+  if (isCurrent) {
+    // Update current assignment
+    updated = await prisma.ubicaciones.update({
+      where: { ID: id },
+      data: {
+        Vehiculo_Asignado_A: data.usuario,
+        Vehiculo_Fecha_Asignacion: start
       }
     });
   }
 
-  // Update current assignment
-  const updated = await prisma.ubicaciones.update({
-    where: { ID: id },
-    data: {
-      Vehiculo_Asignado_A: usuario || null,
-      Vehiculo_Fecha_Asignacion: usuario ? new Date().toISOString().split('T')[0] : null
-    }
-  });
-
   revalidatePath("/vehicles");
   return updated;
+}
+
+export async function deleteVehicleHistory(id: string) {
+  await prisma.historialVehiculos.delete({
+    where: { ID: id }
+  });
+  revalidatePath("/vehicles");
+}
+
+export async function updateVehicleHistory(id: string, data: { usuario: string, fechaInicio: string, fechaFin?: string }) {
+  const today = new Date().toISOString().split('T')[0];
+  const isCurrent = data.fechaInicio <= today && (!data.fechaFin || data.fechaFin >= today);
+  
+  await prisma.historialVehiculos.update({
+    where: { ID: id },
+    data: {
+      Usuario_Nombre: data.usuario,
+      Fecha_Entrega: data.fechaInicio,
+      Fecha_Esperada_Devolucion: data.fechaFin || null,
+      Estado: isCurrent ? 'Activa' : (data.fechaInicio > today ? 'Reserva' : 'Completada')
+    }
+  });
+  revalidatePath("/vehicles");
 }
 
 export async function createIncidente(data: { Herramienta: string, Usuario: string, Tipo: string, Costo: number }) {
@@ -513,5 +585,104 @@ export async function importBackupAction(): Promise<{success: boolean, message: 
     return { success: true, message: "Copia de seguridad restaurada correctamente" };
   } catch (e: any) {
     return { success: false, message: e.message };
+  }
+}
+
+export async function getMaintenanceAlerts() {
+  const tools = await prisma.herramientas.findMany({
+    where: {
+      OR: [
+        { Calibracion_Requerida: 1 },
+        { Mantenimiento_Requerido: 1 }
+      ]
+    }
+  });
+
+  const alerts: any[] = [];
+  const now = new Date();
+
+  for (const t of tools) {
+    if (t.Calibracion_Requerida === 1 && t.Calibracion_Ultima && t.Calibracion_Frecuencia) {
+      const lastCal = new Date(t.Calibracion_Ultima);
+      const nextCal = new Date(lastCal.setMonth(lastCal.getMonth() + t.Calibracion_Frecuencia));
+      const diffDays = Math.ceil((nextCal.getTime() - now.getTime()) / (1000 * 3600 * 24));
+      if (diffDays <= 30) {
+        alerts.push({
+          toolId: t.ID,
+          toolName: t.Nombre,
+          type: 'Calibración',
+          dueDate: nextCal.toISOString().split('T')[0],
+          daysRemaining: diffDays,
+          isOverdue: diffDays < 0
+        });
+      }
+    }
+
+    if (t.Mantenimiento_Requerido === 1 && t.Mantenimiento_Ultimo && t.Mantenimiento_Frecuencia) {
+      const lastMaint = new Date(t.Mantenimiento_Ultimo);
+      const nextMaint = new Date(lastMaint.setMonth(lastMaint.getMonth() + t.Mantenimiento_Frecuencia));
+      const diffDays = Math.ceil((nextMaint.getTime() - now.getTime()) / (1000 * 3600 * 24));
+      if (diffDays <= 30) {
+        alerts.push({
+          toolId: t.ID,
+          toolName: t.Nombre,
+          type: 'Mantenimiento',
+          dueDate: nextMaint.toISOString().split('T')[0],
+          daysRemaining: diffDays,
+          isOverdue: diffDays < 0
+        });
+      }
+    }
+  }
+
+  return alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+}
+
+export async function logReminderAction(data: { Herramienta: string, Usuario: string, Tipo: string, Via: string, Mensaje?: string }) {
+  await prisma.historialRecordatorios.create({
+    data: {
+      ID: crypto.randomUUID(),
+      Fecha: new Date().toISOString(),
+      Empleado: data.Usuario,
+      Tipo: data.Tipo,
+      Via: data.Via,
+      Mensaje: data.Mensaje || ""
+    }
+  });
+}
+
+export async function sendEmailAction(to: string, subject: string, text: string) {
+  const configs = await prisma.config.findMany();
+  const getConf = (k: string) => configs.find(c => c.key === k)?.value || "";
+  
+  const host = getConf("smtpHost");
+  const port = parseInt(getConf("smtpPort") || "587");
+  const user = getConf("smtpUser");
+  const pass = getConf("smtpPass");
+  const from = getConf("smtpFrom") || user;
+
+  if (!host || !user || !pass) {
+    return { success: false, message: "La configuración SMTP está incompleta en Ajustes." };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass }
+    });
+
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text
+    });
+
+    return { success: true, message: "Correo enviado correctamente." };
+  } catch (err: any) {
+    console.error("Email error:", err);
+    return { success: false, message: "Error al enviar correo: " + err.message };
   }
 }

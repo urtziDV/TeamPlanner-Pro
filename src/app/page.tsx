@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DashboardClient } from "./DashboardClient";
+import { getMaintenanceAlerts } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,8 @@ export default async function DashboardPage() {
   ];
 
 
+  const maintenanceAlerts = await getMaintenanceAlerts();
+
   return (
     <DashboardClient 
       totalTools={totalTools}
@@ -107,6 +110,7 @@ export default async function DashboardPage() {
       latestIncidents={latestIncidents}
       topUsers={topUsers}
       inventoryStats={inventoryStats}
+      maintenanceAlerts={maintenanceAlerts}
     />
   );
 }

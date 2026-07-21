@@ -5,12 +5,13 @@ export const dynamic = "force-dynamic";
 
 export default async function VehiclesPage() {
   const ubicaciones = await prisma.ubicaciones.findMany({
-    orderBy: { Tipo: 'asc' }
+    where: { Tipo: 'Vehiculo' },
+    orderBy: { Nombre: 'asc' }
   });
 
   const history = await prisma.historialVehiculos.findMany({
-    orderBy: { Fecha_Devolucion: 'desc' },
-    take: 50
+    orderBy: { Fecha_Entrega: 'desc' },
+    take: 300
   });
 
   const users = await prisma.usuarios.findMany({

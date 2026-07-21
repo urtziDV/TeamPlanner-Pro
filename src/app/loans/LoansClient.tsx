@@ -24,7 +24,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [selectedToolValor, setSelectedToolValor] = useState<number>(0);
   const [incData, setIncData] = useState({ Tipo: "Avería", Costo: 0, Observaciones: "" });
-  const [formData, setFormData] = useState({ Herramienta_ID: "", Usuario_ID: "", Motivo: "", Fecha_Limite: "" });
+  const [formData, setFormData] = useState({ Herramienta_ID: "", Usuario_ID: "", Motivo: "", Fecha_Limite: "", Fecha_Entrega: new Date().toISOString().split('T')[0] });
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<"name_asc" | "name_desc" | "user_asc" | "date_desc">("date_desc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -41,6 +41,17 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
     }
     return 0;
   };
+
+  const getAvailableTools = () => {
+    return tools.filter(t => {
+      const loanedCount = activeLoans.filter(l => l.Herramienta_ID === t.ID).length;
+      const sns = t.SN ? t.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+      const totalQty = Math.max(t.Cantidad_Total || 0, sns.length);
+      const disponibles = totalQty > 0 ? Math.max(0, totalQty - loanedCount) : (t.Estado === 'Disponible' ? 1 : 0);
+      return disponibles > 0;
+    });
+  };
+  const availableTools = getAvailableTools();
 
   const filteredActiveLoans = [...activeLoans].filter(loan => 
     (loan.Herramienta?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
@@ -62,9 +73,10 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
     await createAsignacion({
       ...formData,
       Herramienta: herramienta?.Nombre || "Desconocida",
-      Usuario: usuario?.Nombre || "Desconocido"
+      Usuario: usuario?.Nombre || "Desconocido",
+      Fecha_Entrega: formData.Fecha_Entrega || new Date().toISOString().split('T')[0]
     });
-    setFormData({ Herramienta_ID: "", Usuario_ID: "", Motivo: "", Fecha_Limite: "" });
+    setFormData({ Herramienta_ID: "", Usuario_ID: "", Motivo: "", Fecha_Limite: "", Fecha_Entrega: new Date().toISOString().split('T')[0] });
     setOpen(false);
   };
 
@@ -153,7 +165,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                   required
                 >
                   <option value="">Seleccionar herramienta...</option>
-                  {tools.map(t => <option key={t.ID} value={t.ID}>{t.Nombre} {t.SN ? `(SN: ${t.SN})` : ''}</option>)}
+                  {availableTools.map(t => <option key={t.ID} value={t.ID}>{t.Nombre}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
@@ -176,10 +188,20 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                   placeholder="Ej. Tareas de mantenimiento planta 1"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Fecha Límite (Opcional)</Label>
-                <Popover>
-                  <PopoverTrigger render={
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha Inicio</Label>
+                  <Input 
+                    type="date" 
+                    value={formData.Fecha_Entrega} 
+                    onChange={(e) => setFormData({...formData, Fecha_Entrega: e.target.value})} 
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha Límite (Opcional)</Label>
+                  <Popover>
+                    <PopoverTrigger render={
                     <Button
                       variant={"outline"}
                       className={cn(
@@ -198,8 +220,9 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                       onSelect={(d) => setFormData({...formData, Fecha_Limite: d ? format(d, 'yyyy-MM-dd') : ""})}
                       locale={es}
                     />
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -256,7 +279,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                 </div>
               ) : (
                 filteredActiveLoans.map((loan) => {
-                  const toolDetails = allTools.find(t => t.ID === loan.Herramienta_ID);
+                  const toolDetails = loan.Herramienta_ID ? allTools.find(t => t.ID === loan.Herramienta_ID) : allTools.find(t => t.Nombre === loan.Herramienta);
                   return (
                   <div key={loan.ID} className="rounded-xl border bg-card text-card-foreground shadow flex flex-col justify-between overflow-hidden">
                     <div className="p-6 pb-4 flex items-start gap-4">
@@ -304,7 +327,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
                     </tr>
                   ) : (
                     filteredActiveLoans.map((loan) => {
-                      const toolDetails = allTools.find(t => t.ID === loan.Herramienta_ID);
+                      const toolDetails = loan.Herramienta_ID ? allTools.find(t => t.ID === loan.Herramienta_ID) : allTools.find(t => t.Nombre === loan.Herramienta);
                       return (
                       <tr key={loan.ID} className="border-b transition-colors hover:bg-muted/50">
                         <td className="p-4 align-middle font-medium flex items-center gap-3">

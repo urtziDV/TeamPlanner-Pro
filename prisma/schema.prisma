@@ -88,6 +88,8 @@ model HistorialVehiculos {
   Usuario_Nombre   String?
   Fecha_Entrega    String?
   Fecha_Devolucion String?
+  Fecha_Esperada_Devolucion String?
+  Estado           String? @default("Completada")
   Observaciones    String?
 }
 
@@ -148,6 +150,7 @@ model Ubicaciones {
   Vehiculo_Matricula        String?
   Vehiculo_Asignado_A       String?
   Vehiculo_Fecha_Asignacion String?
+  Imagen_URL                String?
 }
 
 model Usuarios {

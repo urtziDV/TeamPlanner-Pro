@@ -4,6 +4,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [4.0.3] - 2026-07-21
+
+### Añadido
+- **Calendario Infinito y Fines de Semana:** El calendario de vehículos ahora cuenta con botones para navegar indefinidamente por las semanas, agrupa los días bajo una cabecera de "Semana y Año", y resalta visualmente los fines de semana.
+- **Reservas Futuras en Vehículos:** Ahora es posible hacer una reserva a futuro para un vehículo que está actualmente en uso por otro empleado, permitiendo la convivencia de ambas acciones.
+- **Historial Editable:** Se han añadido controles en la pestaña Historial de Vehículos para poder editar o eliminar directamente las asignaciones/reservas registradas.
+- **Fecha de Inicio en Préstamos:** Añadido un campo específico de "Fecha Inicio" al crear un préstamo de herramienta, permitiendo asignar fechas retroactivas o a futuro.
+
+### Cambiado
+- **Separación Vehículos / Ubicaciones:** Las "Ubicaciones" se han trasladado a la sección de Categorías para dejar la página de Vehículos dedicada 100% a la gestión de la flota móvil.
+- **Desplegable de Asignación de Herramientas:** Optimizado para no mostrar cada número de serie individualmente, sino la herramienta genérica si tiene unidades disponibles.
+- **Pegatinas QR Mejoradas:** Ampliada la ventana modal de generación de QR. Se ha eliminado el ID interno de la pegatina física y ahora el texto largo hace saltos de línea en vez de cortarse con puntos suspensivos.
+
 ## [4.0.2] - 2026-07-17
 
 ### Añadido

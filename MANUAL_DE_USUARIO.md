@@ -39,6 +39,7 @@ El núcleo del sistema. Aquí puedes ver, buscar, crear y eliminar herramientas.
 
 ## 🤝 4. Préstamos (Loans)
 Controla quién se ha llevado material y cuándo.
+- **Asignaciones personalizadas:** Al crear un préstamo, puedes elegir la **Fecha de Inicio** (ideal para registrar préstamos que ocurrieron en el pasado o planificados a futuro).
 - Las asignaciones activas muestran **quién** tiene la herramienta, **qué** herramienta es (con su imagen), y la **fecha de entrega**.
 - **Devolver una herramienta:** Para registrar que un empleado ha devuelto un equipo, pasa el ratón sobre su tarjeta y haz clic en el botón de **Retornar**. Si la herramienta ha vuelto dañada, el sistema te permitirá registrarlo directamente como un incidente.
 
@@ -62,7 +63,10 @@ Un historial vitalicio de qué ha pasado con los equipos (roturas, pérdidas, ma
 ## 👥 7. Tablas Maestras (Usuarios, Vehículos, etc.)
 - **Usuarios (Empleados):** Listado del personal. Puedes añadir nuevos empleados, asignarles un departamento, un correo y un teléfono. Si un empleado deja la empresa, puedes borrarlo desde aquí.
 - **Proyectos:** Lista de las obras y proyectos activos. Sirven para etiquetar herramientas que se envían a un proyecto específico.
-- **Vehículos:** Añade furgonetas o coches de empresa con sus respectivas matrículas para tener un control sobre la flota asignada.
+- **Vehículos:** Gestión integral de la flota. 
+  - Cuenta con un **Calendario Infinito** que agrupa por semanas y resalta los fines de semana.
+  - **Reservas concurrentes:** Puedes reservar un vehículo para el futuro aunque actualmente lo esté usando otra persona (haciendo clic en "Reservar" junto al botón "Devolver").
+  - **Historial Editable:** La pestaña de historial permite modificar fechas o borrar reservas antiguas si te has equivocado.
 
 ---
 
