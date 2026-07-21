@@ -58,6 +58,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "urtziDV",
+        "repo": "TeamPlanner-Pro"
+      }
+    ],
     "files": [
       "electron/**/*",
       "next-standalone/**/*",
