@@ -138,14 +138,13 @@ export function AppTour() {
       continuous
       run={run}
       scrollToFirstStep
-      showSkipButton
-      hideCloseButton
-      showProgress
       steps={steps}
       options={{
         zIndex: 10000,
         primaryColor: '#0ea5e9',
         textColor: '#000',
+        showProgress: true,
+        buttons: ['back', 'primary', 'skip'],
       }}
       styles={{
         tooltip: {
