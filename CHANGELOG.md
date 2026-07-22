@@ -26,6 +26,8 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - **Solución de Hidratación en Formularios:** Refactorizada la estructura del DOM en los modales de DialogTrigger para evitar un fallo de Next.js de `<button>` anidados.
 - **Ceguera de Préstamos Legacy (v3.x):** Corregido un fallo crítico en el filtro de asignaciones donde los préstamos importados de versiones antiguas eran invisibles para el motor moderno debido a la ausencia de `Herramienta_ID`. 
 - **Migración y Saneamiento Masivo de Stock:** Desarrollado y ejecutado un script para cruzar un CSV histórico con la base de datos, inyectando de forma permanente el texto real del Número de Serie en 50 asignaciones "ciegas" antiguas. Esto restaura al 100% la precisión del filtro de inventario libre.
+- **Compatibilidad SMTP con Modelo Prisma:** Corregida la referencia incorrecta `prisma.configuracion` (modelo inexistente) por el modelo real `prisma.config` con sus campos actuales (`key`/`value`), desbloqueando la compilación de producción.
+- **Migración de Tour Guiado a react-joyride v3:** Actualizada la integración del tour de bienvenida para adaptarse a los cambios de API que rompían la compilación: `callback` → `onEvent`, props directas (`showProgress`, `hideCloseButton`, etc.) → `options={}`, y corrección de los tipos exportados (`EventData`, `Controls`).
 
 ## [4.1.0] - 2026-07-21
 
