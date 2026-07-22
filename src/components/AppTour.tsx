@@ -152,7 +152,7 @@ export function AppTour() {
           padding: '20px',
           borderRadius: '8px',
         }
-      }}
+      } as any}
       locale={{
         back: 'Atrás',
         close: 'Cerrar',
