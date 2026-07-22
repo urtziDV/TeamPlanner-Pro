@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Joyride, { STATUS, Step } from "react-joyride";
+import { Joyride, STATUS, Step } from "react-joyride";
 
 export function AppTour() {
   const [run, setRun] = useState(false);
