@@ -970,12 +970,12 @@ export async function bulkReturnTools(toolIds: string[]) {
 
 export async function sendActaEmail(employeeEmail: string, base64Pdf: string, fileName: string) {
   try {
-    const smtpHost = await prisma.configuracion.findUnique({ where: { Clave: "smtpHost" } });
-    const smtpPort = await prisma.configuracion.findUnique({ where: { Clave: "smtpPort" } });
-    const smtpUser = await prisma.configuracion.findUnique({ where: { Clave: "smtpUser" } });
-    const smtpPass = await prisma.configuracion.findUnique({ where: { Clave: "smtpPass" } });
+    const smtpHost = await prisma.config.findUnique({ where: { key: "smtpHost" } });
+    const smtpPort = await prisma.config.findUnique({ where: { key: "smtpPort" } });
+    const smtpUser = await prisma.config.findUnique({ where: { key: "smtpUser" } });
+    const smtpPass = await prisma.config.findUnique({ where: { key: "smtpPass" } });
 
-    if (!smtpHost?.Valor || !smtpPort?.Valor || !smtpUser?.Valor || !smtpPass?.Valor) {
+    if (!smtpHost?.value || !smtpPort?.value || !smtpUser?.value || !smtpPass?.value) {
       return { success: false, error: "La configuración SMTP no está completa en Ajustes." };
     }
 
@@ -992,7 +992,7 @@ export async function sendActaEmail(employeeEmail: string, base64Pdf: string, fi
     const buffer = Buffer.from(base64Pdf.split('base64,')[1], 'base64');
 
     const mailOptions = {
-      from: smtpUser.Valor,
+      from: smtpUser.value,
       to: employeeEmail,
       subject: "Acta de Herramientas - " + fileName,
       text: "Hola,\n\nAdjunto encontrarás el acta de herramientas en formato PDF.\n\nUn saludo.",
