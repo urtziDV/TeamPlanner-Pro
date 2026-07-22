@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Joyride, CallBackProps, STATUS, Step } from "react-joyride";
+import Joyride, { STATUS, Step } from "react-joyride";
 
 export function AppTour() {
   const [run, setRun] = useState(false);
@@ -122,7 +122,7 @@ export function AppTour() {
     };
   }, []);
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     
     // Si el usuario cierra el tour, termina, o salta el tour
