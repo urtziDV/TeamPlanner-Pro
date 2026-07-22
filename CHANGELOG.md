@@ -4,6 +4,29 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [4.2.0] - 2026-07-22
+
+### Añadido
+- **Envío de Actas por Email:** Integración con servidor SMTP para enviar Actas de Entrega/Devolución generadas en PDF directamente al correo del empleado.
+- **Informes Económicos de Incidencias en PDF:** Nueva funcionalidad para generar y exportar reportes filtrados con el coste total acumulado de herramientas robadas, rotas o perdidas.
+- **Tour Guiado de Bienvenida:** Incorporación de un tour guiado interactivo (`react-joyride`) para ayudar a los usuarios nuevos a entender los diferentes módulos del sistema (Inventario, Préstamos, Flota, etc.).
+- **Avisos Preventivos de Conversión Genérica:** Añadido un cuadro de diálogo de advertencia al intentar marcar una herramienta como Genérica si ya tiene Números de Serie registrados, ofreciendo la opción de purgar la lista para garantizar el funcionamiento correcto.
+
+### Cambiado
+- **Modernización de Alertas (Toasts):** Reemplazadas todas las alertas nativas bloqueantes (`window.alert`) por un elegante sistema de notificaciones no intrusivas usando la librería `sonner`.
+- **Ampliación de Interfaz de Inventario:** El modal para añadir y editar herramientas ahora usa un tamaño máximo superior (`sm:max-w-4xl`), mostrando dos columnas y aprovechando mucho mejor el espacio en resoluciones altas.
+- **Botones Estilizados en Inventario:** Rediseñados los botones de Atributos Especiales ("Es Básica", "Es Genérica", "Apto Proyecto") en la pestaña de Edición, adoptando un diseño más limpio y sutil para evitar distracciones, y equipados con 'tooltips' de ayuda contextual.
+- **Selector Inteligente de Números de Serie:** El modal de asignación ahora desglosa el bloque monolítico de Números de Serie en una lista vertical limpia con botones independientes, ocultando en tiempo real las unidades que ya han sido prestadas a otros empleados. Se ha simplificado el texto del botón a "Asignar" para mayor limpieza visual.
+- **Indicador Visual de Stock:** Añadido un badge dinámico que muestra la cantidad de Números de Serie registrados actualmente en la edición de inventario, para no tener que contarlos a mano.
+- **Botones Divididos (Split Buttons):** Los botones de Generar Actas en la ficha de usuario han sido remodelados en botones combinados con accesos directos al nuevo envío por email.
+
+### Corregido
+- **Bloqueo Fantasma de Herramientas Genéricas:** Solucionado un error crítico donde asignar una sola unidad de una herramienta genérica/básica con múltiples unidades en stock bloqueaba el resto del lote para otros empleados. El motor de préstamos (manual y de Kits) ahora evalúa matemáticamente el stock remanente en lugar de basarse en la etiqueta estática de estado de la base de datos.
+- **Limpieza Automática de IDs de Empleados:** Desarrollado y ejecutado un script de limpieza para purgar duplicados temporales y dejar solo las asignaciones validadas por Números de Serie reales en el historial.
+- **Solución de Hidratación en Formularios:** Refactorizada la estructura del DOM en los modales de DialogTrigger para evitar un fallo de Next.js de `<button>` anidados.
+- **Ceguera de Préstamos Legacy (v3.x):** Corregido un fallo crítico en el filtro de asignaciones donde los préstamos importados de versiones antiguas eran invisibles para el motor moderno debido a la ausencia de `Herramienta_ID`. 
+- **Migración y Saneamiento Masivo de Stock:** Desarrollado y ejecutado un script para cruzar un CSV histórico con la base de datos, inyectando de forma permanente el texto real del Número de Serie en 50 asignaciones "ciegas" antiguas. Esto restaura al 100% la precisión del filtro de inventario libre.
+
 ## [4.1.0] - 2026-07-21
 
 ### Añadido

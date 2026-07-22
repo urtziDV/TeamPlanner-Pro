@@ -4,11 +4,13 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "sonner";
+import { AppTour } from "@/components/AppTour";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ToolTracker v4.0",
+  title: "ToolTracker Pro v4.2",
   description: "Sistema Avanzado de Gestión de Herramientas y Proyectos",
 };
 
@@ -27,6 +29,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider delay={200}>
+            <Toaster position="bottom-right" richColors />
+            <AppTour />
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">
               {children}

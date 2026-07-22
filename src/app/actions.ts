@@ -7,6 +7,7 @@ import { promisify } from "util";
 import path from "path";
 import fs from "fs";
 import nodemailer from "nodemailer";
+import { Jimp } from "jimp";
 
 const execAsync = promisify(exec);
 
@@ -140,6 +141,20 @@ export async function updateHerramientaEstado(id: string, nuevoEstado: string) {
   return updated;
 }
 
+export async function getCompanyConfigs() {
+  const configs = await prisma.config.findMany({
+    where: { key: { in: ['companyName', 'companyCif', 'companyLogoPath'] } }
+  });
+  
+  const getVal = (k: string) => configs.find((c: any) => c.key === k)?.value || "";
+  
+  return {
+    companyName: getVal('companyName'),
+    companyCif: getVal('companyCif'),
+    companyLogoPath: getVal('companyLogoPath')
+  };
+}
+
 export async function addHerramientaToProject(data: { Proyecto_ID: string, Nombre_Generico: string, Cantidad_Requerida: number, Es_Consumible?: boolean }) {
   const newItem = await prisma.proyecto_Herramientas.create({
     data: {
@@ -241,7 +256,7 @@ export async function updateUsuario(id: string, data: { Nombre: string, Departam
   return updated;
 }
 
-export async function createAsignacion(data: { Herramienta_ID: string, Herramienta: string, Usuario_ID: string, Usuario: string, Motivo?: string, Fecha_Limite?: string, Fecha_Entrega?: string }) {
+export async function createAsignacion(data: { Herramienta_ID: string, Herramienta: string, Usuario_ID: string, Usuario: string, Motivo?: string, Fecha_Limite?: string, Fecha_Entrega?: string, SN?: string }) {
   const newLoan = await prisma.asignaciones.create({
     data: {
       ID: crypto.randomUUID(),
@@ -253,7 +268,8 @@ export async function createAsignacion(data: { Herramienta_ID: string, Herramien
       Fecha_Entrega: data.Fecha_Entrega || new Date().toISOString().split('T')[0],
       Estado: "Activo",
       Motivo: data.Motivo,
-      Fecha_Limite: data.Fecha_Limite
+      Fecha_Limite: data.Fecha_Limite,
+      SN: data.SN
     }
   });
   
@@ -506,7 +522,7 @@ export async function openFolderPicker(): Promise<string | null> {
     const script = `
       Add-Type -AssemblyName System.Windows.Forms;
       $f = New-Object System.Windows.Forms.FolderBrowserDialog;
-      $f.Description = "Selecciona la carpeta";
+      $f.Description = 'Selecciona la carpeta';
       $f.ShowNewFolderButton = $true;
       $result = $f.ShowDialog();
       if ($result -eq 'OK') { Write-Output $f.SelectedPath }
@@ -524,8 +540,8 @@ export async function openFilePicker(): Promise<string | null> {
     const script = `
       Add-Type -AssemblyName System.Windows.Forms;
       $f = New-Object System.Windows.Forms.OpenFileDialog;
-      $f.Filter = "SQLite Database (*.db)|*.db|All Files (*.*)|*.*";
-      $f.Title = "Selecciona el archivo de la base de datos";
+      $f.Filter = 'SQLite Database (*.db)|*.db|All Files (*.*)|*.*';
+      $f.Title = 'Selecciona el archivo de la base de datos';
       $result = $f.ShowDialog();
       if ($result -eq 'OK') { Write-Output $f.FileName }
     `;
@@ -537,31 +553,106 @@ export async function openFilePicker(): Promise<string | null> {
   }
 }
 
-export async function exportBackupAction(): Promise<{success: boolean, message: string}> {
+export async function openImagePicker(): Promise<string | null> {
   try {
     const script = `
       Add-Type -AssemblyName System.Windows.Forms;
-      $f = New-Object System.Windows.Forms.FolderBrowserDialog;
-      $f.Description = "Selecciona la carpeta para guardar la copia";
-      $f.ShowNewFolderButton = $true;
+      $f = New-Object System.Windows.Forms.OpenFileDialog;
+      $f.Filter = 'Imagenes (*.png;*.jpg;*.jpeg;*.webp)|*.png;*.jpg;*.jpeg;*.webp|Todos los archivos (*.*)|*.*';
+      $f.Title = 'Selecciona el logo de la empresa';
       $result = $f.ShowDialog();
-      if ($result -eq 'OK') { Write-Output $f.SelectedPath }
+      if ($result -eq 'OK') { Write-Output $f.FileName }
     `;
     const { stdout } = await execAsync(`powershell -Command "${script.replace(/\n/g, ' ')}"`);
-    const targetFolder = stdout.trim();
-    if (!targetFolder) return { success: false, message: "Operación cancelada" };
+    return stdout.trim() || null;
+  } catch (e) {
+    console.error("Error opening image picker:", e);
+    return null;
+  }
+}
+
+export async function processAndSaveLogo(sourcePath: string): Promise<{success: boolean, message?: string}> {
+  try {
+    const destPath = path.join(process.cwd(), 'prisma', 'company_logo.png');
+    
+    // Leer, redimensionar y guardar la imagen
+    const image = await Jimp.read(sourcePath);
+    image.scaleToFit({ w: 300, h: 100 });
+    await image.write(destPath as `${string}.${string}`);
+    
+    // Guardar la ruta destino en la configuración
+    await updateConfigs([{ key: "companyLogoPath", value: destPath }]);
+    
+    return { success: true };
+  } catch (e: any) {
+    console.error("Error procesando logo:", e);
+    return { success: false, message: e.message };
+  }
+}
+
+export async function exportBackupAction(isManual: boolean = false): Promise<{success: boolean, message: string}> {
+  try {
+    const configs = await prisma.config.findMany({
+      where: { key: { in: ['backupPath', 'cloudBackupPath', 'backupCopies'] } }
+    });
+    
+    const getVal = (k: string) => configs.find((c: any) => c.key === k)?.value || "";
+    const localPath = getVal('backupPath');
+    const cloudPath = getVal('cloudBackupPath');
+    const copiesStr = getVal('backupCopies');
+    const backupCopies = parseInt(copiesStr, 10) || 30;
+
+    if (!localPath && !cloudPath) {
+      return { success: false, message: "No se han configurado rutas de copia de seguridad en los Ajustes." };
+    }
 
     const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
     if (!fs.existsSync(dbPath)) return { success: false, message: "No se encuentra dev.db" };
 
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-    const filename = `ToolTracker_Backup_${dateStr}_${timeStr}.db`;
-    const targetPath = path.join(targetFolder, filename);
+    const timeStr = isManual ? `_${now.toTimeString().split(' ')[0].replace(/:/g, '-')}` : '';
+    const filename = `ToolTracker_Backup_${dateStr}${timeStr}.db`;
 
-    fs.copyFileSync(dbPath, targetPath);
-    return { success: true, message: `Backup exportado a: ${targetPath}` };
+    let successMsg = "Copia realizada en:\n";
+    let madeBackup = false;
+
+    const manageBackupsInFolder = (folderPath: string) => {
+      if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+      }
+      const targetFile = path.join(folderPath, filename);
+      fs.copyFileSync(dbPath, targetFile);
+      
+      const files = fs.readdirSync(folderPath)
+        .filter(f => f.startsWith('ToolTracker_Backup_') && f.endsWith('.db'))
+        .map(f => {
+          const fp = path.join(folderPath, f);
+          return { name: f, path: fp, stat: fs.statSync(fp) };
+        })
+        .sort((a, b) => b.stat.mtime.getTime() - a.stat.mtime.getTime());
+
+      if (files.length > backupCopies) {
+        const toDelete = files.slice(backupCopies);
+        toDelete.forEach(file => {
+          try { fs.unlinkSync(file.path); } catch (e) {}
+        });
+      }
+    };
+
+    if (localPath) {
+      manageBackupsInFolder(localPath);
+      successMsg += `- Local\n`;
+      madeBackup = true;
+    }
+    
+    if (cloudPath) {
+      manageBackupsInFolder(cloudPath);
+      successMsg += `- Nube\n`;
+      madeBackup = true;
+    }
+
+    return { success: true, message: madeBackup ? successMsg.trim() : "No se pudo realizar ninguna copia." };
   } catch (e: any) {
     return { success: false, message: e.message };
   }
@@ -652,7 +743,11 @@ export async function logReminderAction(data: { Herramienta: string, Usuario: st
   });
 }
 
-export async function sendEmailAction(to: string, subject: string, text: string) {
+export async function sendEmailAction(to: string, subject: string, text: string): Promise<
+  | { success: true; message: string; useOutlook?: false }
+  | { success: false; useOutlook: true; message: string; to: string; subject: string; text: string }
+  | { success: false; useOutlook?: false; message: string }
+> {
   const configs = await prisma.config.findMany();
   const getConf = (k: string) => configs.find(c => c.key === k)?.value || "";
   
@@ -662,8 +757,9 @@ export async function sendEmailAction(to: string, subject: string, text: string)
   const pass = getConf("smtpPass");
   const from = getConf("smtpFrom") || user;
 
+  // No SMTP configured → signal the client to fall back to Outlook
   if (!host || !user || !pass) {
-    return { success: false, message: "La configuración SMTP está incompleta en Ajustes." };
+    return { success: false, useOutlook: true, message: "Sin SMTP configurado. Se abrirá Outlook con el borrador listo.", to, subject, text };
   }
 
   try {
@@ -685,6 +781,31 @@ export async function sendEmailAction(to: string, subject: string, text: string)
   } catch (err: any) {
     console.error("Email error:", err);
     return { success: false, message: "Error al enviar correo: " + err.message };
+  }
+}
+
+/**
+ * Opens the system default mail client (Outlook 365) with a pre-filled draft.
+ * Uses the mailto: protocol + Windows `start` command so no SMTP credentials are needed.
+ */
+export async function openOutlookAction(
+  to: string,
+  subject: string,
+  body: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Build mailto URL — encodeURIComponent handles special chars & line breaks
+    const mailtoUrl =
+      `mailto:${encodeURIComponent(to)}` +
+      `?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`;
+
+    // `start "" <url>` opens the protocol handler registered in Windows (Outlook if default)
+    await execAsync(`start "" "${mailtoUrl}"`);
+    return { success: true, message: "Outlook abierto con el borrador listo para enviar." };
+  } catch (err: any) {
+    console.error("openOutlookAction error:", err);
+    return { success: false, message: "No se pudo abrir Outlook: " + err.message };
   }
 }
 
@@ -760,13 +881,28 @@ export async function saveKits(kits: any[]) {
 }
 
 export async function assignKitToUser(userId: string, userName: string, kitTools: string[]) {
-  const allTools = await prisma.herramientas.findMany({ where: { Estado: 'Disponible' } });
+  const allTools = await prisma.herramientas.findMany();
+  const activeAssignments = await prisma.asignaciones.findMany({
+    where: { Fecha_Devolucion: null }
+  });
+  
   const assigned: string[] = [];
   const missing: string[] = [];
   const usedIds = new Set<string>();
 
   for (const toolName of kitTools) {
-    const availableTool = allTools.find(t => t.Nombre === toolName && !usedIds.has(t.ID));
+    const availableTool = allTools.find(t => {
+      if (t.Nombre !== toolName || usedIds.has(t.ID)) return false;
+      
+      const sns = t.SN ? t.SN.split(/[\n,]/).filter(Boolean) : [];
+      const totalQty = Math.max(t.Cantidad_Total || 0, sns.length);
+      
+      if (totalQty <= 1) return t.Estado === "Disponible";
+      
+      const assignedCount = activeAssignments.filter(a => a.Herramienta_ID === t.ID || (!a.Herramienta_ID && a.Herramienta === t.Nombre)).length;
+      return (totalQty - assignedCount) > 0;
+    });
+    
     if (availableTool) {
       usedIds.add(availableTool.ID);
       await createAsignacion({
@@ -830,5 +966,50 @@ export async function bulkReturnTools(toolIds: string[]) {
   revalidatePath('/inventory');
   revalidatePath('/users');
   return { success: true, count: returnCount };
+}
+
+export async function sendActaEmail(employeeEmail: string, base64Pdf: string, fileName: string) {
+  try {
+    const smtpHost = await prisma.configuracion.findUnique({ where: { Clave: "smtpHost" } });
+    const smtpPort = await prisma.configuracion.findUnique({ where: { Clave: "smtpPort" } });
+    const smtpUser = await prisma.configuracion.findUnique({ where: { Clave: "smtpUser" } });
+    const smtpPass = await prisma.configuracion.findUnique({ where: { Clave: "smtpPass" } });
+
+    if (!smtpHost?.Valor || !smtpPort?.Valor || !smtpUser?.Valor || !smtpPass?.Valor) {
+      return { success: false, error: "La configuración SMTP no está completa en Ajustes." };
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost.value,
+      port: parseInt(smtpPort.value),
+      secure: parseInt(smtpPort.value) === 465,
+      auth: {
+        user: smtpUser.value,
+        pass: smtpPass.value,
+      },
+    });
+
+    const buffer = Buffer.from(base64Pdf.split('base64,')[1], 'base64');
+
+    const mailOptions = {
+      from: smtpUser.Valor,
+      to: employeeEmail,
+      subject: "Acta de Herramientas - " + fileName,
+      text: "Hola,\n\nAdjunto encontrarás el acta de herramientas en formato PDF.\n\nUn saludo.",
+      attachments: [
+        {
+          filename: fileName,
+          content: buffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    };
+
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error sending acta email:", error);
+    return { success: false, error: error.message || "Error desconocido al enviar el email." };
+  }
 }
 

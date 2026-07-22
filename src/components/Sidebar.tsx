@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { 
   Wrench, 
   LayoutDashboard, 
@@ -36,14 +37,28 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card/50 backdrop-blur-sm">
       <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b">
-        <Wrench className="h-6 w-6 text-primary" />
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">ToolTracker</span>
-          <VersionChecker />
+        {logoError ? (
+          <Wrench className="h-6 w-6 text-primary shrink-0" />
+        ) : (
+          <img 
+            src="/logo.png" 
+            alt="ToolTracker Pro Logo" 
+            className="h-8 w-auto max-w-[40px] object-contain shrink-0 rounded-md shadow-sm" 
+            onError={() => setLogoError(true)}
+          />
+        )}
+        <div className="flex flex-col justify-center">
+          <span className="text-[1.15rem] font-bold tracking-tight whitespace-nowrap leading-tight">
+            ToolTracker <span className="text-primary font-black">Pro</span>
+          </span>
+          <div className="mt-0.5 self-start">
+            <VersionChecker />
+          </div>
         </div>
       </div>
       <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
@@ -52,6 +67,7 @@ export function Sidebar() {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             return (
               <Link
+                id={`tour-${item.href === '/' ? 'dashboard' : item.href.replace('/', '')}`}
                 key={item.name}
                 href={item.href}
                 className={cn(

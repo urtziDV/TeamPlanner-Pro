@@ -6,6 +6,7 @@ import { exportToExcel } from "@/lib/exportUtils";
 import { QRScanner } from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -45,14 +46,14 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
     const toolMatch = allTools.find(t => t.ID === q || (t.SN && t.SN.includes(q)));
     if (toolMatch) {
       if (bulkScanned.some(b => b.ID === toolMatch.ID)) {
-        alert("La herramienta ya está en la cola");
+        toast.warning("La herramienta ya está en la cola");
       } else {
         const valid = bulkMode === 'assign' ? toolMatch.Estado === 'Disponible' : toolMatch.Estado === 'Prestada';
         let statusMsg = valid ? "Listo" : (bulkMode === 'assign' ? "No disponible" : "No prestada");
         setBulkScanned([{ ...toolMatch, codigo: q, valid, statusMsg }, ...bulkScanned]);
       }
     } else {
-      alert("Herramienta no encontrada");
+      toast.error("Herramienta no encontrada");
     }
     setBulkInput("");
   };
@@ -70,7 +71,7 @@ export function LoansClient({ activeLoans, history, tools, allTools, users }: { 
     setIsExecutingBulk(false);
     setOpenBulk(false);
     setBulkScanned([]);
-    alert(`Operación masiva completada con éxito.`);
+    toast.success(`Operación masiva completada con éxito.`);
     window.location.reload();
   };
 

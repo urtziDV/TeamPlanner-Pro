@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Trash2, Search } from "lucide-react";
+import { Search, AlertTriangle, Trash2, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { createIncidente, deleteIncidente } from "@/app/actions";
+import { createIncidente, deleteIncidente, getCompanyConfigs } from "@/app/actions";
+import { generateIncidentsPDF } from "./pdfExport";
+import { toast } from "sonner";
 
 export function IncidentsClient({ incidentes, usuarios = [], herramientas = [] }: { incidentes: any[], usuarios?: any[], herramientas?: any[] }) {
   const [incOpen, setIncOpen] = useState(false);
@@ -40,12 +42,30 @@ export function IncidentsClient({ incidentes, usuarios = [], herramientas = [] }
     }
   };
 
+  const handleGeneratePDF = async () => {
+    toast.loading("Generando PDF de incidencias...");
+    try {
+      const companyConfigs = await getCompanyConfigs();
+      await generateIncidentsPDF(filteredIncidentes, companyConfigs);
+      toast.dismiss();
+      toast.success("Informe PDF generado correctamente.");
+    } catch (e) {
+      console.error(e);
+      toast.dismiss();
+      toast.error("Error al generar el informe PDF.");
+    }
+  };
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6 overflow-y-auto">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Incidentes</h2>
         
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleGeneratePDF} className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-red-500" />
+            Exportar PDF
+          </Button>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 

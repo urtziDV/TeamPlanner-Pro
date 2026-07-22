@@ -11,12 +11,19 @@
   </p>
   <p>
     <img src="https://img.shields.io/badge/Status-Active-success?style=flat-square" alt="Status" />
-    <img src="https://img.shields.io/badge/Version-4.1.0-blue?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-4.2.0-blue?style=flat-square" alt="Version" />
     <img src="https://img.shields.io/badge/License-Proprietary-red?style=flat-square" alt="License" />
   </p>
 </div>
 
 <hr/>
+
+## 🆕 Changelog v4.2.0
+
+*   **✉️ Envío de Actas por Email:** Integración con tu configuración SMTP para enviar directamente desde la ficha del empleado el Acta de Entrega/Devolución generada en PDF.
+*   **📄 Informes Económicos de Incidencias en PDF:** Nueva función dinámica en la pestaña de Incidencias. Genera informes PDF filtrados al vuelo con el coste total sumado de las herramientas rotas o robadas.
+*   **✨ Interfaz Modernizada y Toasts:** Sustitución global de alertas del navegador por notificaciones flotantes integradas (`sonner`). Ampliación de ventanas modales y rediseño en los botones de "Generar Acta" para acomodar el envío directo por email.
+*   **🛠️ Corrección de Errores:** Limpieza profunda de herramientas duplicadas en base de datos (por IDs temporales). Solución al conflicto de bordes en los nuevos botones y solución a problemas de hidratación de Next.js al cargar las vistas.
 
 ## 🌟 Visión General
 

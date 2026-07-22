@@ -1,7 +1,7 @@
-"use client";
+"use client"; 
 
 import { useState } from "react";
-import { UsersRound, Plus, Trash2, Edit, LayoutGrid, List, Search, Briefcase, CheckCircle2, FileText, History, Download } from "lucide-react";
+import { UsersRound, Plus, Trash2, Edit, LayoutGrid, List, Search, Eye, CheckCircle2, FileText, History, Download, Mail, Loader2 } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { createUsuario, deleteUsuario, updateUsuario, createAsignacion, deleteSolicitud, assignKitToUser } from "@/app/actions";
+import { createUsuario, deleteUsuario, updateUsuario, createAsignacion, deleteSolicitud, assignKitToUser, getCompanyConfigs, deleteAsignacion, sendActaEmail } from "@/app/actions";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { generateEmployeePDF } from "./pdfExport";
 
 export function UsersClient({ 
   initialUsers, 
@@ -73,12 +75,118 @@ export function UsersClient({
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [snSelectorOpen, setSnSelectorOpen] = useState(false);
   const [currentKitToolName, setCurrentKitToolName] = useState("");
+  const [includeCost, setIncludeCost] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const welcomeKitNames = Array.from(new Set(basicTools.map((t: any) => t.Nombre)));
+
+  const handleGeneratePDF = async (type: 'entrega' | 'devolucion') => {
+    if (!selectedUser) return;
+    toast.loading("Generando PDF...");
+    try {
+      const companyConfigs = await getCompanyConfigs();
+      const userAssignments = activeAssignments
+        .filter(a => a.Usuario_ID === selectedUser.ID || a.Usuario === selectedUser.Nombre)
+        .map(a => {
+          let valor = "0";
+          if (a.Herramienta_ID) {
+            const tool = allTools?.find(t => t.ID === a.Herramienta_ID);
+            if (tool && tool.Valor) valor = tool.Valor;
+          } else {
+            const tool = allTools?.find(t => t.Nombre === a.Herramienta);
+            if (tool && tool.Valor) valor = tool.Valor;
+          }
+          return { ...a, Valor: valor };
+        });
+      await generateEmployeePDF(type, selectedUser, userAssignments, companyConfigs, includeCost);
+      toast.dismiss();
+      toast.success("PDF generado con éxito");
+    } catch (e) {
+      toast.dismiss();
+      toast.error("Error al generar PDF");
+      console.error(e);
+    }
+  };
+
+  const handleEmailPDF = async (type: 'entrega' | 'devolucion') => {
+    if (!selectedUser) return;
+    if (!selectedUser.Email) {
+      toast.error("El usuario no tiene un email configurado.");
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    const loadingToastId = toast.loading("Generando y enviando acta por email...");
+    try {
+      const companyConfigs = await getCompanyConfigs();
+      const userAssignments = activeAssignments
+        .filter(a => a.Usuario_ID === selectedUser.ID || a.Usuario === selectedUser.Nombre)
+        .map(a => {
+          let valor = "0";
+          if (a.Herramienta_ID) {
+            const tool = allTools?.find(t => t.ID === a.Herramienta_ID);
+            if (tool && tool.Valor) valor = tool.Valor;
+          } else {
+            const tool = allTools?.find(t => t.Nombre === a.Herramienta);
+            if (tool && tool.Valor) valor = tool.Valor;
+          }
+          return { ...a, Valor: valor };
+        });
+        
+      const pdfResult = await generateEmployeePDF(type, selectedUser, userAssignments, companyConfigs, includeCost, true);
+      const { base64, fileName } = pdfResult as { base64: string, fileName: string };
+
+      const res = await sendActaEmail(selectedUser.Email, base64, fileName);
+      if (res.success) {
+        toast.success(`Acta enviada correctamente a ${selectedUser.Email}`);
+      } else {
+        toast.error(res.error || "Error al enviar el email.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al preparar el PDF para enviar.");
+    } finally {
+      toast.dismiss(loadingToastId);
+      setIsSendingEmail(false);
+    }
+  };
+
+  const checkDuplicateId = (idEmpleado: string, currentUserId?: string) => {
+    if (!idEmpleado) return false;
+    return users.some(u => u.ID_Empleado === idEmpleado && u.ID !== currentUserId);
+  };
+
+  const getFreeIds = () => {
+    const assignedIds = users
+      .map(u => parseInt(u.ID_Empleado))
+      .filter(id => !isNaN(id) && id > 0)
+      .sort((a, b) => a - b);
+      
+    if (assignedIds.length === 0) return "Todos (1, 2, 3...)";
+    
+    const maxId = assignedIds[assignedIds.length - 1];
+    const freeIds = [];
+    for (let i = 1; i < maxId; i++) {
+      if (!assignedIds.includes(i)) {
+        freeIds.push(i);
+      }
+    }
+    
+    if (freeIds.length === 0) {
+      return `Próximo: ${maxId + 1}`;
+    }
+    
+    const displayIds = freeIds.slice(0, 10).join(', ');
+    return `Libres: ${displayIds}${freeIds.length > 10 ? '...' : ''} | Próximo: ${maxId + 1}`;
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.Nombre) return;
+    if (checkDuplicateId(formData.ID_Empleado)) {
+      toast.error("Este ID de empleado ya está en uso por otra persona.");
+      return;
+    }
     const newUser = await createUsuario(formData);
     setUsers((prev) => [newUser, ...prev]);
     setFormData({ Nombre: "", Departamento: "", Email: "", Telefono: "", ID_Empleado: "" });
@@ -101,6 +209,10 @@ export function UsersClient({
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUserId || !formData.Nombre) return;
+    if (checkDuplicateId(formData.ID_Empleado, editingUserId)) {
+      toast.error("Este ID de empleado ya está en uso por otra persona.");
+      return;
+    }
     const updated = await updateUsuario(editingUserId, formData);
     setUsers(prev => prev.map(u => u.ID === editingUserId ? { ...u, ...updated } : u));
     setEditOpen(false);
@@ -126,10 +238,19 @@ export function UsersClient({
     setDetailsOpen(true);
   };
 
+  const isToolAvailable = (tool: any) => {
+    const sns = tool.SN ? tool.SN.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+    const totalQty = Math.max(tool.Cantidad_Total || 0, sns.length);
+    if (totalQty <= 1) return tool.Estado === "Disponible";
+    
+    const assignedCount = activeAssignments.filter(a => a.Herramienta_ID === tool.ID || (!a.Herramienta_ID && a.Herramienta === tool.Nombre)).length;
+    return (totalQty - assignedCount) > 0;
+  };
+
   const handleAssignBasicTool = async (toolName: string) => {
-    const availableTools = basicTools.filter((t: any) => t.Nombre === toolName && t.Estado === "Disponible");
+    const availableTools = basicTools.filter((t: any) => t.Nombre === toolName && isToolAvailable(t));
     if (availableTools.length === 0) {
-      alert("No hay stock disponible de " + toolName);
+      toast.error("No hay stock disponible de " + toolName);
       return;
     }
     
@@ -158,15 +279,44 @@ export function UsersClient({
       let msg = `Asignado: ${res.assigned.join(', ') || 'Ninguna herramienta'}.`;
       if (res.missing.length > 0) {
         msg += `\nSin stock: ${res.missing.join(', ')}.`;
-        alert(msg);
+        toast.warning(msg);
       } else {
-        alert("Kit asignado completamente.");
+        toast.success("Kit asignado completamente.");
       }
       router.refresh();
     }
   };
 
-  const handleAssignSpecificTool = async (toolId: string) => {
+  const handleReturnTool = async (a: any) => {
+    const ok = await confirm({
+      title: "Devolver Material",
+      message: `¿Confirmas la devolución de ${a.Herramienta}?`,
+      confirmLabel: "Devolver"
+    });
+    if (ok) {
+      let toolId = a.Herramienta_ID;
+      if (!toolId) {
+        const t = allTools?.find(x => x.Nombre === a.Herramienta);
+        if (t) toolId = t.ID;
+      }
+      if (toolId) {
+        toast.loading("Procesando devolución...");
+        try {
+          await deleteAsignacion(a.ID, toolId, "Devuelto OK");
+          toast.dismiss();
+          toast.success("Material devuelto correctamente");
+          router.refresh();
+        } catch (e) {
+          toast.dismiss();
+          toast.error("Error al devolver material");
+        }
+      } else {
+        toast.error("No se pudo encontrar el ID de la herramienta para devolverla.");
+      }
+    }
+  };
+
+  const handleAssignSpecificTool = async (toolId: string, sn?: string) => {
     const toolToAssign = allTools.find((t: any) => t.ID === toolId);
     if (!toolToAssign) return;
     
@@ -175,7 +325,8 @@ export function UsersClient({
       Herramienta: toolToAssign.Nombre,
       Usuario_ID: selectedUser.ID,
       Usuario: selectedUser.Nombre,
-      Motivo: "Material de Bienvenida"
+      Motivo: "Material de Bienvenida",
+      SN: sn
     });
     
     setSnSelectorOpen(false);
@@ -184,9 +335,9 @@ export function UsersClient({
   };
 
   const handleAssignRequest = async (solicitud: any) => {
-    const availableTools = allTools.filter((t: any) => t.Nombre === solicitud.Herramienta && t.Estado === "Disponible");
+    const availableTools = allTools.filter((t: any) => t.Nombre === solicitud.Herramienta && isToolAvailable(t));
     if (availableTools.length === 0) {
-      alert("No hay stock disponible de " + solicitud.Herramienta);
+      toast.error("No hay stock disponible de " + solicitud.Herramienta);
       return;
     }
     
@@ -268,19 +419,31 @@ export function UsersClient({
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Empleado
             </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Añadir Empleado</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre Completo</Label>
-                <Input 
-                  id="nombre" 
-                  value={formData.Nombre} 
-                  onChange={(e) => setFormData({...formData, Nombre: e.target.value})} 
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nombre">Nombre Completo</Label>
+                  <Input 
+                    id="nombre" 
+                    value={formData.Nombre} 
+                    onChange={(e) => setFormData({...formData, Nombre: e.target.value})} 
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="id_empleado">ID Empleado</Label>
+                  <Input 
+                    id="id_empleado" 
+                    value={formData.ID_Empleado} 
+                    onChange={(e) => setFormData({...formData, ID_Empleado: e.target.value})} 
+                    placeholder="Ej. 1, 2, 3..."
+                  />
+                  <p className="text-[11px] text-muted-foreground">{getFreeIds()}</p>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="departamento">Departamento</Label>
@@ -322,19 +485,30 @@ export function UsersClient({
         </Dialog>
 
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Editar Empleado</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEdit} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-nombre">Nombre Completo</Label>
-                <Input 
-                  id="edit-nombre" 
-                  value={formData.Nombre} 
-                  onChange={(e) => setFormData({...formData, Nombre: e.target.value})} 
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-nombre">Nombre Completo</Label>
+                  <Input 
+                    id="edit-nombre" 
+                    value={formData.Nombre} 
+                    onChange={(e) => setFormData({...formData, Nombre: e.target.value})} 
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-id_empleado">ID Empleado</Label>
+                  <Input 
+                    id="edit-id_empleado" 
+                    value={formData.ID_Empleado} 
+                    onChange={(e) => setFormData({...formData, ID_Empleado: e.target.value})} 
+                  />
+                  <p className="text-[11px] text-muted-foreground">{getFreeIds()}</p>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-departamento">Departamento</Label>
@@ -393,6 +567,7 @@ export function UsersClient({
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold leading-none tracking-tight">{u.Nombre}</h3>
+                      {u.ID_Empleado && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded border">ID: {u.ID_Empleado}</span>}
                       {getScoreBadge(calculateReliabilityScore(u.Nombre))}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{u.Departamento || "Sin departamento"}</p>
@@ -408,7 +583,7 @@ export function UsersClient({
                     className="p-1.5 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-500/10"
                     title="Detalles del Empleado"
                   >
-                    <Briefcase className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </button>
                   <Button title="Editar" variant="ghost" size="icon" 
                     onClick={() => openEdit(u)}
@@ -433,6 +608,7 @@ export function UsersClient({
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{u.Nombre}</h3>
+                      {u.ID_Empleado && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded border">ID: {u.ID_Empleado}</span>}
                       {getScoreBadge(calculateReliabilityScore(u.Nombre))}
                     </div>
                     <p className="text-sm text-muted-foreground">{u.Departamento || "Sin departamento"}</p>
@@ -445,7 +621,7 @@ export function UsersClient({
                     className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-md hover:bg-blue-500/10"
                     title="Detalles del Empleado"
                   >
-                    <Briefcase className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </button>
                   <Button title="Editar" variant="ghost" size="icon" 
                     onClick={() => openEdit(u)}
@@ -491,10 +667,43 @@ export function UsersClient({
             )}
           </DialogHeader>
           
-          <Tabs defaultValue="bienvenida" className="w-full mt-4">
+          <div className="flex gap-4 items-center justify-end mt-2 bg-muted/30 p-2 rounded-lg border">
+            <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary mr-2">
+              <input 
+                type="checkbox" 
+                checked={includeCost} 
+                onChange={(e) => setIncludeCost(e.target.checked)} 
+                className="rounded border-gray-300 w-4 h-4 accent-primary" 
+              />
+              <span className="font-medium text-muted-foreground select-none">Mostrar Coste Estimado</span>
+            </label>
+            <div className="flex gap-2 border-l pl-4 border-border items-center">
+              <div className="flex border rounded-md overflow-hidden bg-background">
+                <Button variant="ghost" size="sm" onClick={() => handleGeneratePDF('entrega')} className="flex items-center gap-2 border-0 border-r rounded-none hover:bg-primary/5">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Acta Entrega
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleEmailPDF('entrega')} disabled={isSendingEmail} className="border-0 rounded-none hover:bg-primary/5 w-9 px-0" title="Enviar por Email">
+                  {isSendingEmail ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Mail className="h-4 w-4 text-primary" />}
+                </Button>
+              </div>
+              
+              <div className="flex border border-red-200 rounded-md overflow-hidden bg-background">
+                <Button variant="ghost" size="sm" onClick={() => handleGeneratePDF('devolucion')} className="flex items-center gap-2 border-0 border-r border-red-200 text-red-600 rounded-none hover:text-red-700 hover:bg-red-50">
+                  <FileText className="h-4 w-4" />
+                  Acta Devolución
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleEmailPDF('devolucion')} disabled={isSendingEmail} className="border-0 rounded-none text-red-600 hover:text-red-700 hover:bg-red-50 w-9 px-0" title="Enviar por Email">
+                  {isSendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Tabs defaultValue="adicional" className="w-full mt-4">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="bienvenida">Mat. Básico</TabsTrigger>
-              <TabsTrigger value="adicional">Mat. Adicional</TabsTrigger>
+              <TabsTrigger value="adicional">Mat. Asignado</TabsTrigger>
+              <TabsTrigger value="bienvenida">Asignar Básico</TabsTrigger>
               <TabsTrigger value="solicitudes">Solicitudes</TabsTrigger>
               <TabsTrigger value="historial">Historial</TabsTrigger>
             </TabsList>
@@ -550,10 +759,17 @@ export function UsersClient({
             <TabsContent value="adicional" className="pt-4">
               <div className="space-y-4">
                 {(() => {
-                  const additional = activeAssignments.filter(a => (a.Usuario_ID === selectedUser?.ID || a.Usuario === selectedUser?.Nombre) && !welcomeKitNames.includes(a.Herramienta as string));
+                  const additional = activeAssignments.filter(a => a.Usuario_ID === selectedUser?.ID || a.Usuario === selectedUser?.Nombre);
                   if (additional.length === 0) {
-                    return <p className="text-sm text-muted-foreground text-center py-8">No hay material adicional prestado a este empleado.</p>;
+                    return <p className="text-sm text-muted-foreground text-center py-8">No hay material prestado a este empleado.</p>;
                   }
+
+                  const toolCounts = additional.reduce((acc, curr) => {
+                    const key = curr.Herramienta;
+                    acc[key] = (acc[key] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>);
+
                   return (
                     <div className="rounded-md border">
                       <table className="w-full text-sm">
@@ -562,16 +778,34 @@ export function UsersClient({
                             <th className="px-4 py-2 text-left font-medium">Material</th>
                             <th className="px-4 py-2 text-left font-medium">Fecha Entrega</th>
                             <th className="px-4 py-2 text-left font-medium">Identificador</th>
+                            <th className="px-4 py-2 text-right font-medium">Acción</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {additional.map(a => (
-                            <tr key={a.ID} className="border-b last:border-0">
-                              <td className="px-4 py-3 font-medium">{a.Herramienta}</td>
-                              <td className="px-4 py-3 text-muted-foreground">{a.Fecha_Entrega ? new Date(a.Fecha_Entrega).toLocaleDateString() : '-'}</td>
-                              <td className="px-4 py-3 text-muted-foreground">{a.Identificador || '-'}</td>
-                            </tr>
-                          ))}
+                          {additional.map(a => {
+                            const isRepeated = toolCounts[a.Herramienta] > 1;
+                            return (
+                              <tr key={a.ID} className={`border-b last:border-0 ${isRepeated ? 'bg-amber-50/50 hover:bg-amber-50/80 dark:bg-amber-950/20 dark:hover:bg-amber-950/40' : ''}`}>
+                                <td className="px-4 py-3 font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {a.Herramienta}
+                                    {isRepeated && (
+                                      <span className="inline-flex items-center rounded-md bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                                        Duplicado
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">{a.Fecha_Entrega ? new Date(a.Fecha_Entrega).toLocaleDateString() : '-'}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{a.Identificador || '-'}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <Button variant="outline" size="sm" onClick={() => handleReturnTool(a)} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50">
+                                    Devolver
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -671,7 +905,7 @@ export function UsersClient({
 
       {/* SN/ID Selector Modal */}
       <Dialog open={snSelectorOpen} onOpenChange={setSnSelectorOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Seleccionar {currentKitToolName}</DialogTitle>
           </DialogHeader>
@@ -679,18 +913,41 @@ export function UsersClient({
             <p className="text-sm text-muted-foreground">
               Hay varias opciones disponibles para este material. Por favor, selecciona el que vas a entregar.
             </p>
-            <div className="grid gap-2 max-h-60 overflow-y-auto">
-              {allTools.filter((t: any) => t.Nombre === currentKitToolName && t.Estado === "Disponible").map((tool: any) => (
-                <div key={tool.ID} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted transition-colors">
-                  <div>
-                    <p className="font-medium">{tool.Nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {tool.SN ? `SN: ${tool.SN}` : "Sin SN"} {tool.ID_Interno ? `| ID: ${tool.ID_Interno}` : ""}
-                    </p>
+            <div className="grid gap-2 max-h-[60vh] overflow-y-auto">
+              {allTools.filter((t: any) => t.Nombre === currentKitToolName && isToolAvailable(t)).flatMap((tool: any) => {
+                const sns = tool.SN ? tool.SN.split(/[\n, ]+/).filter(Boolean) : [];
+                
+                if (sns.length === 0) {
+                  return [(
+                    <div key={tool.ID} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted transition-colors">
+                      <div>
+                        <p className="font-medium">{tool.Nombre}</p>
+                        <p className="text-xs text-muted-foreground">Sin SN específico {tool.ID_Interno ? `| ID: ${tool.ID_Interno}` : ""}</p>
+                      </div>
+                      <Button size="sm" onClick={() => handleAssignSpecificTool(tool.ID)}>Seleccionar</Button>
+                    </div>
+                  )];
+                }
+                
+                const assignedSns = activeAssignments
+                  .filter(a => a.Herramienta_ID === tool.ID || (!a.Herramienta_ID && a.Herramienta === tool.Nombre))
+                  .map(a => a.SN)
+                  .filter(Boolean);
+                  
+                const availableSns = sns.filter((sn: string) => !assignedSns.includes(sn));
+                
+                return availableSns.map((sn: string, idx: number) => (
+                  <div key={`${tool.ID}-${idx}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted transition-colors">
+                    <div>
+                      <p className="font-medium">{tool.Nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        SN: <span className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">{sn}</span> {tool.ID_Interno ? `| ID: ${tool.ID_Interno}` : ""}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => handleAssignSpecificTool(tool.ID, sn)}>Asignar</Button>
                   </div>
-                  <Button size="sm" onClick={() => handleAssignSpecificTool(tool.ID)}>Seleccionar</Button>
-                </div>
-              ))}
+                ));
+              })}
             </div>
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setSnSelectorOpen(false)}>Cancelar</Button>

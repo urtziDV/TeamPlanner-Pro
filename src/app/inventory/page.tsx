@@ -51,6 +51,9 @@ export default async function InventoryPage() {
     orderBy: { Nombre: 'asc' }
   });
   const usuarios = await prisma.usuarios.findMany();
+  const ubicaciones = await prisma.ubicaciones.findMany({
+    orderBy: { Nombre: 'asc' }
+  });
 
-  return <InventoryClient initialTools={toolsWithAvailability as any} categorias={categorias} usuarios={usuarios} />;
+  return <InventoryClient initialTools={toolsWithAvailability as any} categorias={categorias} usuarios={usuarios} ubicaciones={ubicaciones} />;
 }

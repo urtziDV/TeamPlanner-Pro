@@ -1,5 +1,5 @@
 {
-  "name": "tooltracker-web",
+  "name": "ToolTracker-Pro",
   "version": "4.1.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,11 @@
   "dependencies": {
     "framer-motion": "^12.42.2",
     "jimp": "^1.6.1",
-    "nodemailer": "^9.0.3"
+    "nodemailer": "^9.0.3",
+    "react-joyride": "^3.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@base-ui/react": "^1.6.0",

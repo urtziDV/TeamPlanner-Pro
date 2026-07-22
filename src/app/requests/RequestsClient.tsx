@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteSolicitud, createAsignacion } from "@/app/actions";
 import { useConfirm, ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -95,7 +96,7 @@ export function RequestsClient({ initialRequests, tools = [], users = [] }: { in
     
     const userMatch = users.find(u => u.Nombre.toLowerCase() === currentReq.Usuario.toLowerCase());
     if (!userMatch) {
-      alert("Usuario no encontrado en la base de datos.");
+      toast.error("Usuario no encontrado en la base de datos.");
       return;
     }
     

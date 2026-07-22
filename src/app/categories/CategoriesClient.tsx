@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { 
   createCategoria, deleteCategoria, updateCategoria, 
   createUbicacion, deleteUbicacion, updateUbicacion,
-  createDepartamento, deleteDepartamento, updateDepartamento,
-  createTipoRecordatorio, deleteTipoRecordatorio, updateTipoRecordatorio
+  createDepartamento, deleteDepartamento, updateDepartamento
 } from "@/app/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,12 +38,10 @@ export function CategoriesClient({
   const [categorias, setCategorias] = useState(initialCategorias);
   const [ubicaciones, setUbicaciones] = useState(initialUbicaciones);
   const [departamentos, setDepartamentos] = useState(initialDepartamentos);
-  const [tiposRecordatorios, setTiposRecordatorios] = useState(initialTiposRecordatorios);
   
   const [open, setOpen] = useState(false);
   const [openUbi, setOpenUbi] = useState(false);
   const [openDep, setOpenDep] = useState(false);
-  const [openTip, setOpenTip] = useState(false);
 
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   
@@ -128,37 +125,12 @@ export function CategoriesClient({
     if (ok) { await deleteDepartamento(id); setDepartamentos(prev => prev.filter(d => d.ID !== id)); }
   };
 
-  // -- TiposRecordatorios (Plantillas) Logic --
-  const [tipEditingId, setTipEditingId] = useState<string | null>(null);
-  const [tipNombre, setTipNombre] = useState("");
-  const [tipPlantilla, setTipPlantilla] = useState("");
-
+  // -- Kits Predefinidos Logic --
   const [kits, setKits] = useState(initialKits);
   const [openKit, setOpenKit] = useState(false);
   const [kitEditingId, setKitEditingId] = useState<string | null>(null);
   const [kitNombre, setKitNombre] = useState("");
   const [kitTools, setKitTools] = useState<string[]>([]);
-
-  const handleOpenNewTip = () => { setTipEditingId(null); setTipNombre(""); setTipPlantilla("Hola {Usuario}, tienes pendiente de devolver la herramienta {Herramienta}."); setOpenTip(true); };
-  const handleOpenEditTip = (t: any) => { setTipEditingId(t.ID); setTipNombre(t.Nombre); setTipPlantilla(t.Plantilla); setOpenTip(true); };
-
-  const handleSaveTip = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tipNombre || !tipPlantilla) return;
-    if (tipEditingId) {
-      const updated = await updateTipoRecordatorio(tipEditingId, { Nombre: tipNombre, Plantilla: tipPlantilla });
-      setTiposRecordatorios(prev => prev.map(t => t.ID === tipEditingId ? updated : t));
-    } else {
-      const newTip = await createTipoRecordatorio({ Nombre: tipNombre, Plantilla: tipPlantilla });
-      setTiposRecordatorios(prev => [...prev, newTip]);
-    }
-    setOpenTip(false);
-  };
-
-  const handleDeleteTip = async (id: string) => {
-    const ok = await confirm({ title: "Eliminar Plantilla", message: "¿Estás seguro de que quieres eliminar esta plantilla?", variant: "destructive", confirmLabel: "Eliminar" });
-    if (ok) { await deleteTipoRecordatorio(id); setTiposRecordatorios(prev => prev.filter(t => t.ID !== id)); }
-  };
 
   const handleOpenEditKit = (k: any) => { setKitEditingId(k.id); setKitNombre(k.nombre); setKitTools(k.herramientas || []); setOpenKit(true); };
 
@@ -266,36 +238,15 @@ export function CategoriesClient({
               </form>
             </DialogContent>
           </Dialog>
-
-          {/* Plantilla Modal */}
-          <Dialog open={openTip} onOpenChange={setOpenTip}>
-            <DialogTrigger render={<Button variant="outline" onClick={handleOpenNewTip} />}>
-              <Plus className="h-4 w-4 mr-2" /> Plantilla
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{tipEditingId ? "Editar Plantilla" : "Añadir Plantilla"}</DialogTitle></DialogHeader>
-              <form onSubmit={handleSaveTip} className="space-y-4 pt-4">
-                <div className="space-y-2"><Label>Nombre (Asunto/Motivo)</Label><Input value={tipNombre} onChange={(e) => setTipNombre(e.target.value)} placeholder="Ej. Aviso de Devolución" required /></div>
-                <div className="space-y-2">
-                  <Label>Plantilla de Mensaje</Label>
-                  <Textarea value={tipPlantilla} onChange={(e) => setTipPlantilla(e.target.value)} rows={5} placeholder="Hola {Usuario}, por favor devuelve {Herramienta}." required />
-                  <p className="text-xs text-muted-foreground">Variables permitidas: {'{Usuario}'}, {'{Herramienta}'}</p>
-                </div>
-                <div className="flex justify-end gap-2 pt-4"><Button variant="outline" type="button" onClick={() => setOpenTip(false)}>Cancelar</Button><Button type="submit">Guardar</Button></div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
         </div>
       </div>
       <ConfirmDialog confirmState={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
       
       <Tabs defaultValue="categorias" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 overflow-x-auto">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="categorias">Categorías</TabsTrigger>
           <TabsTrigger value="ubicaciones">Ubicaciones</TabsTrigger>
           <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
-          <TabsTrigger value="plantillas">Plantillas</TabsTrigger>
           <TabsTrigger value="kits">Kits</TabsTrigger>
         </TabsList>
         
@@ -353,28 +304,6 @@ export function CategoriesClient({
                 </div>
               );
             })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="plantillas" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {tiposRecordatorios.length === 0 ? <div className="col-span-full p-8 text-center border rounded-xl bg-card text-muted-foreground">No hay plantillas.</div> : tiposRecordatorios.map((t) => (
-              <div key={t.ID} className="rounded-xl border bg-card shadow hover:shadow-md flex flex-col p-4 group">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-orange-500/10 text-orange-600"><MessageSquare className="h-4 w-4" /></div>
-                    <span className="font-semibold text-sm">{t.Nombre}</span>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button title="Editar" variant="ghost" size="icon" onClick={() => handleOpenEditTip(t)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"><Edit className="h-3 w-3" /></Button>
-                    <Button title="Eliminar" variant="ghost" size="icon" onClick={() => handleDeleteTip(t.ID)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md italic line-clamp-3">
-                  "{t.Plantilla}"
-                </p>
-              </div>
-            ))}
           </div>
         </TabsContent>
 

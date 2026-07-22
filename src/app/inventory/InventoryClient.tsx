@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List, Download, ImagePlus, Zap, ScanLine } from "lucide-react";
+import { Wrench, Plus, Search, Trash2, Edit, Box, Layers, CheckCircle, LayoutGrid, List, Download, ImagePlus, Zap, ScanLine, AlertTriangle } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
 import { QRGenerator } from "@/components/QRGenerator";
 import { QRScanner } from "@/components/QRScanner";
@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export function InventoryClient({ initialTools, categorias, usuarios = [] }: { initialTools: any[], categorias: any[], usuarios?: any[] }) {
+export function InventoryClient({ initialTools, categorias, usuarios = [], ubicaciones = [] }: { initialTools: any[], categorias: any[], usuarios?: any[], ubicaciones?: any[] }) {
   const [tools, setTools] = useState(initialTools);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [genericWarningOpen, setGenericWarningOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -77,6 +78,14 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
 
   const handleRemoveSn = (snToRemove: string) => {
     setFormData({...formData, SN: formData.SN.filter(sn => sn !== snToRemove)});
+  };
+
+  const handleGenericaToggle = () => {
+    if (!formData.Es_Generica && formData.SN.length > 0) {
+      setGenericWarningOpen(true);
+    } else {
+      setFormData({...formData, Es_Generica: !formData.Es_Generica});
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -162,12 +171,12 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
             <span className="hidden md:inline">Exportar</span>
           </Button>
         </div>
+        <Button onClick={() => setOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva Herramienta
+        </Button>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Herramienta
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Añadir Herramienta</DialogTitle>
             </DialogHeader>
@@ -196,7 +205,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Números de Serie (SN)</Label>
+                  <Label>Números de Serie (SN) {formData.SN.length > 0 && <span className="ml-1 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{formData.SN.length}</span>}</Label>
                   <div className="flex gap-2">
                     <Input 
                       value={snInput} 
@@ -215,7 +224,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                     <Button type="button" onClick={handleAddSn} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
                   </div>
                   {formData.SN.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto border rounded-md p-2 bg-muted/10">
                       {formData.SN.map(sn => (
                         <div key={sn} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-xs">
                           {sn}
@@ -282,11 +291,17 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ubicacion">Ubicación</Label>
-                  <Input 
+                  <select 
                     id="ubicacion" 
-                    value={formData.Ubicacion} 
-                    onChange={(e) => setFormData({...formData, Ubicacion: e.target.value})} 
-                  />
+                    value={formData.Ubicacion || ""} 
+                    onChange={(e) => setFormData({...formData, Ubicacion: e.target.value})}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Sin ubicación</option>
+                    {ubicaciones.map(u => (
+                      <option key={u.ID} value={u.Nombre}>{u.Nombre}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -300,15 +315,15 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
               <div className="flex flex-wrap gap-4 mt-2">
                 <button 
                   type="button"
-                  title="Es Genérica"
-                  onClick={() => setFormData({...formData, Es_Generica: !formData.Es_Generica})}
+                  title="Material consumible o genérico. Se presta indicando la cantidad, sin necesidad de rastrear el Número de Serie exacto."
+                  onClick={handleGenericaToggle}
                   className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Es_Generica ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                 >
                   <Box className="w-4 h-4" /> Es Genérica
                 </button>
                 <button 
                   type="button"
-                  title="Es Básica"
+                  title="EPIs o material de dotación básica. Se pueden asignar en bloque a nuevos empleados desde la configuración."
                   onClick={() => setFormData({...formData, Es_Basica: !formData.Es_Basica})}
                   className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Es_Basica ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-500' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                 >
@@ -316,7 +331,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                 </button>
                 <button 
                   type="button"
-                  title="Apto Proyecto"
+                  title="Herramientas pesadas o grandes lotes que se asignan directamente a un Proyecto en lugar de a un empleado."
                   onClick={() => setFormData({...formData, Apto_Proyecto: !formData.Apto_Proyecto})}
                   className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Apto_Proyecto ? 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-500' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                 >
@@ -328,6 +343,33 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                 <Button type="submit">Guardar</Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={genericWarningOpen} onOpenChange={setGenericWarningOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-500">
+                <AlertTriangle className="h-5 w-5" />
+                Conversión a Genérica
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4 text-sm text-muted-foreground">
+              <p>Esta herramienta tiene <strong>{formData.SN.length} Números de Serie</strong> registrados.</p>
+              <p>Si la conviertes en Genérica manteniendo los SNs, el sistema ignorará la conversión y te seguirá obligando a elegir un SN exacto al prestarla por motivos de seguridad.</p>
+              <p>Para que funcione como una genérica real (prestar solo por cantidad sin rastreo de SN), debes vaciar la lista de Números de Serie.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-4">
+              <Button variant="outline" onClick={() => setGenericWarningOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="secondary" onClick={() => { setFormData({...formData, Es_Generica: true}); setGenericWarningOpen(false); }}>
+                Mantener SNs
+              </Button>
+              <Button variant="default" className="bg-orange-500 hover:bg-orange-600 text-white" onClick={() => { setFormData({...formData, Es_Generica: true, SN: []}); setGenericWarningOpen(false); }}>
+                Borrar SNs y Continuar
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -568,7 +610,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Editar Herramienta</DialogTitle>
           </DialogHeader>
@@ -602,22 +644,25 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Atributos Especiales</Label>
                   <button 
                     type="button"
-                    onClick={() => setFormData({...formData, Es_Generica: !formData.Es_Generica})}
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-all ${formData.Es_Generica ? 'bg-primary border-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+                    title="Material consumible o genérico. Se presta indicando la cantidad, sin necesidad de rastrear el Número de Serie exacto."
+                    onClick={handleGenericaToggle}
+                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Es_Generica ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                   >
                     <Box className="w-4 h-4" /> Es Genérica
                   </button>
                   <button 
                     type="button"
+                    title="EPIs o material de dotación básica. Se pueden asignar en bloque a nuevos empleados desde la configuración."
                     onClick={() => setFormData({...formData, Es_Basica: !formData.Es_Basica})}
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-all ${formData.Es_Basica ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Es_Basica ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-500' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                   >
                     <Layers className="w-4 h-4" /> Es Básica
                   </button>
                   <button 
                     type="button"
+                    title="Herramientas pesadas o grandes lotes que se asignan directamente a un Proyecto en lugar de a un empleado."
                     onClick={() => setFormData({...formData, Apto_Proyecto: !formData.Apto_Proyecto})}
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-all ${formData.Apto_Proyecto ? 'bg-green-600 border-green-600 text-white shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors ${formData.Apto_Proyecto ? 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-500' : 'bg-background hover:bg-muted text-muted-foreground'}`}
                   >
                     <CheckCircle className="w-4 h-4" /> Apto Proyecto
                   </button>
@@ -677,7 +722,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Números de Serie (SN)</Label>
+                      <Label>Números de Serie (SN) {formData.SN.length > 0 && <span className="ml-1 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{formData.SN.length}</span>}</Label>
                       <div className="flex gap-2">
                         <Input 
                           value={snInput} 
@@ -696,7 +741,7 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                         <Button type="button" onClick={handleAddSn} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
                       </div>
                       {formData.SN.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto border rounded-md p-2 bg-muted/10">
                           {formData.SN.map(sn => (
                             <div key={sn} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-xs">
                               {sn}
@@ -715,7 +760,17 @@ export function InventoryClient({ initialTools, categorias, usuarios = [] }: { i
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-ubicacion">Ubicación</Label>
-                      <Input id="edit-ubicacion" value={formData.Ubicacion} onChange={(e) => setFormData({...formData, Ubicacion: e.target.value})} />
+                      <select 
+                        id="edit-ubicacion" 
+                        value={formData.Ubicacion || ""} 
+                        onChange={(e) => setFormData({...formData, Ubicacion: e.target.value})}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">Sin ubicación</option>
+                        {ubicaciones.map(u => (
+                          <option key={u.ID} value={u.Nombre}>{u.Nombre}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-obs">Observaciones</Label>
