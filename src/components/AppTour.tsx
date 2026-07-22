@@ -21,7 +21,7 @@ export function AppTour() {
           </p>
         </div>
       ),
-      disableBeacon: true,
+
     },
     {
       target: "#tour-dashboard",
@@ -32,7 +32,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-inventory",
@@ -43,7 +43,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-loans",
@@ -54,7 +54,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-users",
@@ -65,7 +65,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-vehicles",
@@ -76,7 +76,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-projects",
@@ -87,7 +87,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     },
     {
       target: "#tour-settings",
@@ -98,7 +98,7 @@ export function AppTour() {
         </div>
       ),
       placement: "right",
-      disableBeacon: true,
+
     }
   ];
 
