@@ -1,8 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useEffect, useState } from "react";
-import { Joyride, STATUS, Step } from "react-joyride";
+import { Joyride, STATUS, Step, EventData, Controls } from "react-joyride";
 
 export function AppTour() {
   const [run, setRun] = useState(false);
@@ -123,7 +122,7 @@ export function AppTour() {
     };
   }, []);
 
-  const handleJoyrideCallback = (data: any) => {
+  const handleJoyrideCallback = (data: EventData, _controls: Controls) => {
     const { status } = data;
     
     // Si el usuario cierra el tour, termina, o salta el tour
@@ -135,25 +134,25 @@ export function AppTour() {
 
   return (
     <Joyride
-      callback={handleJoyrideCallback}
+      onEvent={handleJoyrideCallback}
       continuous
-      hideCloseButton
       run={run}
       scrollToFirstStep
-      showProgress
-      showSkipButton
       steps={steps}
+      options={{
+        zIndex: 10000,
+        primaryColor: '#0ea5e9',
+        textColor: '#000',
+        showProgress: true,
+        showSkipButton: true,
+        hideCloseButton: true,
+      }}
       styles={{
-        options: {
-          zIndex: 10000,
-          primaryColor: '#0ea5e9', // text-primary equivalent approx
-          textColor: '#000', // Safe default, we will rely on CSS classes for dark mode if needed
-        },
         tooltip: {
           padding: '20px',
           borderRadius: '8px',
         }
-      } as any}
+      }}
       locale={{
         back: 'Atrás',
         close: 'Cerrar',
